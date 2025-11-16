@@ -1,0 +1,351 @@
+components:
+  schemas:
+    DashboardResponse:
+      type: object
+      description: Comprehensive dashboard view for a deal
+      required:
+        - dealInfo
+        - periodsSummary
+        - recentEvents
+        - healthMetrics
+      properties:
+        dealInfo:
+          type: object
+          description: Basic deal information
+          required:
+            - dealId
+            - name
+            - status
+            - roles
+          properties:
+            dealId:
+              type: string
+              example: "0x1234567890abcdef1234567890abcdef1234567890abcdef1234567890abcdef"
+            name:
+              type: string
+              example: "Acquisition of TechCorp Inc."
+            closingDate:
+              type: string
+              format: date
+              example: "2025-12-31"
+            currency:
+              type: string
+              example: "USD"
+            status:
+              type: string
+              enum: ["draft", "active", "completed", "cancelled"]
+              example: "active"
+            roles:
+              type: object
+              description: Role assignments
+              properties:
+                buyer:
+                  type: string
+                  pattern: '^0x[a-fA-F0-9]{64}$'
+                seller:
+                  type: string
+                  pattern: '^0x[a-fA-F0-9]{64}$'
+                auditor:
+                  type: string
+                  pattern: '^0x[a-fA-F0-9]{64}$'
+              example:
+                buyer: "0xabcd..."
+                seller: "0xef01..."
+                auditor: "0x9876..."
+            userRole:
+              type: string
+              enum: ["buyer", "seller", "auditor"]
+              description: Current user's role in this deal
+              example: "buyer"
+        periodsSummary:
+          type: array
+          description: Summary of all periods
+          items:
+            $ref: '#/components/schemas/PeriodSummary'
+        recentEvents:
+          type: array
+          description: Recent activity events
+          items:
+            $ref: '#/components/schemas/DealEvent'
+        healthMetrics:
+          $ref: '#/components/schemas/HealthMetrics'
+
+    PeriodSummary:
+      type: object
+      description: Summary view of a single period
+      required:
+        - periodId
+        - name
+        - dateRange
+        - dataUploadProgress
+        - kpiStatus
+        - settlementStatus
+      properties:
+        periodId:
+          type: string
+          description: Period identifier
+          example: "period_2026"
+        name:
+          type: string
+          description: Period name
+          example: "2026 Fiscal Year"
+        dateRange:
+          type: object
+          description: Period date range
+          required:
+            - start
+            - end
+          properties:
+            start:
+              type: string
+              format: date
+              example: "2026-01-01"
+            end:
+              type: string
+              format: date
+              example: "2026-12-31"
+        dataUploadProgress:
+          type: object
+          description: Data upload status
+          required:
+            - blobCount
+          properties:
+            blobCount:
+              type: integer
+              description: Number of uploaded blobs
+              example: 12
+            lastUploadAt:
+              type: string
+              format: date-time
+              description: Last upload timestamp
+              example: "2026-12-20T14:30:00Z"
+            completeness:
+              type: number
+              minimum: 0
+              maximum: 100
+              description: Data completeness percentage (0-100)
+              example: 85.5
+        kpiStatus:
+          type: string
+          enum: ["not_proposed", "proposed", "approved", "rejected"]
+          description: KPI proposal/attestation status
+          example: "approved"
+        kpiValue:
+          type: number
+          description: Attested or proposed KPI value
+          example: 11300000
+        settlementStatus:
+          type: string
+          enum: ["not_settled", "pending", "settled"]
+          description: Settlement status
+          example: "settled"
+        settlementAmount:
+          type: number
+          description: Settlement amount (if settled)
+          example: 2600000
+        nextAction:
+          type: object
+          description: Suggested next action for this period
+          properties:
+            action:
+              type: string
+              description: Action to take
+              example: "Propose KPI"
+            actor:
+              type: string
+              enum: ["buyer", "seller", "auditor"]
+              description: Who should take this action
+              example: "buyer"
+            deadline:
+              type: string
+              format: date
+              description: Action deadline
+              example: "2027-01-31"
+
+    DealEvent:
+      type: object
+      description: Event in deal timeline
+      required:
+        - type
+        - timestamp
+        - actor
+        - description
+      properties:
+        type:
+          type: string
+          enum: [
+            "deal_created",
+            "parameters_set",
+            "data_upload",
+            "kpi_proposed",
+            "kpi_attested",
+            "kpi_rejected",
+            "settlement",
+            "role_updated"
+          ]
+          description: Event type
+          example: "data_upload"
+        timestamp:
+          type: string
+          format: date-time
+          description: Event timestamp
+          example: "2026-03-15T09:30:00Z"
+        actor:
+          type: string
+          description: Sui address of actor
+          pattern: '^0x[a-fA-F0-9]{64}$'
+          example: "0xabcd1234567890abcdef1234567890abcdef1234567890abcdef1234567890"
+        actorRole:
+          type: string
+          enum: ["buyer", "seller", "auditor"]
+          description: Role of actor
+          example: "buyer"
+        description:
+          type: string
+          description: Human-readable event description
+          example: "Uploaded revenue_journal for period_2026"
+        txHash:
+          type: string
+          description: Sui transaction hash (if on-chain event)
+          pattern: '^[A-Za-z0-9+/=]{44}$'
+          example: "8vqKfZTqP9J3xYz1RmN2BcD4LpW7Qh5K"
+        metadata:
+          type: object
+          description: Additional event metadata
+          additionalProperties: true
+          example:
+            periodId: "period_2026"
+            blobId: "blob_xyz"
+            dataType: "revenue_journal"
+
+    HealthMetrics:
+      type: object
+      description: Overall deal health metrics
+      required:
+        - overallProgress
+        - pendingActions
+      properties:
+        overallProgress:
+          type: number
+          minimum: 0
+          maximum: 100
+          description: Overall completion percentage (0-100)
+          example: 45.5
+        pendingActions:
+          type: integer
+          description: Number of pending actions requiring attention
+          example: 3
+        nextDeadline:
+          type: string
+          format: date
+          description: Next important deadline
+          example: "2027-01-31"
+        dataCompletenessScore:
+          type: number
+          minimum: 0
+          maximum: 100
+          description: Average data completeness across all periods
+          example: 78.5
+        risksDetected:
+          type: array
+          description: Potential risks or issues detected
+          items:
+            type: object
+            properties:
+              severity:
+                type: string
+                enum: ["low", "medium", "high"]
+                example: "medium"
+              category:
+                type: string
+                example: "Missing Data"
+              description:
+                type: string
+                example: "Period 2027 has no data uploads yet"
+              periodId:
+                type: string
+                example: "period_2027"
+
+    SettlementRequest:
+      type: object
+      required:
+        - confirmedPayout
+      properties:
+        confirmedPayout:
+          type: number
+          minimum: 0
+          description: |
+            Confirmed payout amount
+            Must match the calculated amount from attested KPI
+          example: 2600000
+
+    SettlementResponse:
+      type: object
+      required:
+        - settlement
+        - transaction
+      properties:
+        settlement:
+          type: object
+          description: Settlement details
+          required:
+            - periodId
+            - attestedKPI
+            - calculatedPayout
+          properties:
+            periodId:
+              type: string
+              example: "period_2026"
+            periodName:
+              type: string
+              example: "2026 Fiscal Year"
+            attestedKPI:
+              type: number
+              description: Auditor-attested KPI value
+              example: 11300000
+            calculatedPayout:
+              type: number
+              description: Calculated payout amount
+              example: 2600000
+            recipient:
+              type: string
+              description: Seller address receiving payout
+              pattern: '^0x[a-fA-F0-9]{64}$'
+              example: "0xef012345678890abcdef1234567890abcdef1234567890abcdef1234567890"
+        transaction:
+          type: object
+          description: Unsigned settlement transaction
+          required:
+            - txBytes
+            - description
+            - warning
+          properties:
+            txBytes:
+              type: string
+              description: Base64 encoded transaction bytes
+            description:
+              type: string
+              example: "Settle period_2026: Pay $2,600,000 to seller"
+            warning:
+              type: string
+              description: Important settlement warning
+              example: "This settlement is irreversible. Please verify the amount before signing."
+            estimatedGas:
+              type: integer
+              example: 2500000
+            tokenTransfer:
+              type: object
+              description: Token transfer details
+              properties:
+                amount:
+                  type: number
+                  example: 2600000
+                currency:
+                  type: string
+                  example: "USD"
+                from:
+                  type: string
+                  description: Source address (escrow/treasury)
+                to:
+                  type: string
+                  description: Destination address (seller)

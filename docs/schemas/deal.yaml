@@ -1,0 +1,258 @@
+components:
+  schemas:
+    Deal:
+      type: object
+      required:
+        - dealId
+        - name
+        - closingDate
+        - currency
+        - buyer
+        - status
+        - createdAt
+      properties:
+        dealId:
+          type: string
+          description: |
+            Sui object ID of the on-chain Deal
+            Format: 0x + 64 hex characters
+          pattern: '^0x[a-fA-F0-9]{64}$'
+          example: "0x1234567890abcdef1234567890abcdef1234567890abcdef1234567890abcdef"
+        name:
+          type: string
+          minLength: 1
+          maxLength: 200
+          description: Human-readable deal name
+          example: "Acquisition of TechCorp Inc."
+        closingDate:
+          type: string
+          format: date
+          description: Deal closing date (ISO 8601 date format)
+          example: "2025-12-31"
+        currency:
+          type: string
+          enum: ["USD", "EUR", "GBP", "JPY", "SUI"]
+          description: Currency used for earn-out calculations
+          example: "USD"
+        buyer:
+          type: string
+          description: Sui address of the buyer/acquirer
+          pattern: '^0x[a-fA-F0-9]{64}$'
+          example: "0xabcd1234567890abcdef1234567890abcdef1234567890abcdef1234567890"
+        seller:
+          type: string
+          description: Sui address of the seller (optional, can be set later)
+          pattern: '^0x[a-fA-F0-9]{64}$'
+          example: "0xef012345678890abcdef1234567890abcdef1234567890abcdef1234567890"
+        auditor:
+          type: string
+          description: Sui address of the auditor (optional, can be set later)
+          pattern: '^0x[a-fA-F0-9]{64}$'
+          example: "0x9876543210abcdef1234567890abcdef1234567890abcdef1234567890abcd"
+        status:
+          type: string
+          enum: ["draft", "active", "completed", "cancelled"]
+          description: |
+            Current status of the deal:
+            - draft: Parameters not yet locked
+            - active: Parameters locked, periods in progress
+            - completed: All periods settled
+            - cancelled: Deal terminated
+          example: "active"
+        periods:
+          type: array
+          description: List of earn-out periods
+          items:
+            $ref: './period.yaml#/components/schemas/Period'
+        metadata:
+          type: object
+          description: Additional deal metadata (flexible key-value pairs)
+          additionalProperties: true
+          example:
+            industry: "Technology"
+            dealSize: "50M USD"
+            notes: "Standard SaaS acquisition"
+        createdAt:
+          type: string
+          format: date-time
+          description: Deal creation timestamp
+          example: "2025-11-16T10:00:00Z"
+        updatedAt:
+          type: string
+          format: date-time
+          description: Last update timestamp
+          example: "2025-11-16T15:30:00Z"
+
+    CreateDealRequest:
+      type: object
+      required:
+        - name
+        - closingDate
+        - currency
+        - buyerAddress
+      properties:
+        name:
+          type: string
+          minLength: 1
+          maxLength: 200
+          description: Deal name
+          example: "Acquisition of TechCorp Inc."
+        closingDate:
+          type: string
+          format: date
+          description: Deal closing date
+          example: "2025-12-31"
+        currency:
+          type: string
+          enum: ["USD", "EUR", "GBP", "JPY", "SUI"]
+          description: Currency for earn-out
+          example: "USD"
+        buyerAddress:
+          type: string
+          pattern: '^0x[a-fA-F0-9]{64}$'
+          description: Sui address of buyer
+          example: "0xabcd1234567890abcdef1234567890abcdef1234567890abcdef1234567890"
+        sellerAddress:
+          type: string
+          pattern: '^0x[a-fA-F0-9]{64}$'
+          description: Sui address of seller (optional)
+          example: "0xef012345678890abcdef1234567890abcdef1234567890abcdef1234567890"
+        auditorAddress:
+          type: string
+          pattern: '^0x[a-fA-F0-9]{64}$'
+          description: Sui address of auditor (optional)
+          example: "0x9876543210abcdef1234567890abcdef1234567890abcdef1234567890abcd"
+        metadata:
+          type: object
+          description: Additional metadata
+          additionalProperties: true
+          example:
+            industry: "Technology"
+            dealSize: "50M USD"
+
+    CreateDealResponse:
+      type: object
+      required:
+        - deal
+        - transaction
+      properties:
+        deal:
+          $ref: '#/components/schemas/Deal'
+        transaction:
+          type: object
+          description: |
+            Unsigned Sui transaction for frontend to sign
+            This transaction will create the Deal object on-chain
+          required:
+            - txBytes
+            - description
+          properties:
+            txBytes:
+              type: string
+              description: Base64 encoded transaction bytes
+              example: "AAACAAgA..."
+            description:
+              type: string
+              description: Human-readable transaction description
+              example: "Create earn-out deal: Acquisition of TechCorp Inc."
+            estimatedGas:
+              type: integer
+              description: Estimated gas cost in MIST
+              example: 1000000
+
+    DealListResponse:
+      allOf:
+        - $ref: './errors.yaml#/components/schemas/PaginatedResponse'
+        - type: object
+          properties:
+            items:
+              type: array
+              items:
+                $ref: '#/components/schemas/DealSummary'
+
+    DealSummary:
+      type: object
+      description: Lightweight deal summary for list views
+      required:
+        - dealId
+        - name
+        - status
+        - userRole
+      properties:
+        dealId:
+          type: string
+          description: Sui object ID
+          example: "0x1234567890abcdef1234567890abcdef1234567890abcdef1234567890abcdef"
+        name:
+          type: string
+          description: Deal name
+          example: "Acquisition of TechCorp Inc."
+        closingDate:
+          type: string
+          format: date
+          example: "2025-12-31"
+        currency:
+          type: string
+          example: "USD"
+        status:
+          type: string
+          enum: ["draft", "active", "completed", "cancelled"]
+          example: "active"
+        userRole:
+          type: string
+          enum: ["buyer", "seller", "auditor"]
+          description: Current user's role in this deal
+          example: "buyer"
+        periodCount:
+          type: integer
+          description: Total number of periods
+          example: 3
+        settledPeriods:
+          type: integer
+          description: Number of periods already settled
+          example: 1
+        lastActivity:
+          type: string
+          format: date-time
+          description: Last activity timestamp
+          example: "2025-11-16T15:30:00Z"
+
+    UpdateDealRolesRequest:
+      type: object
+      description: Update role assignments for a deal
+      properties:
+        buyerAddress:
+          type: string
+          pattern: '^0x[a-fA-F0-9]{64}$'
+          description: New buyer address (optional)
+        sellerAddress:
+          type: string
+          pattern: '^0x[a-fA-F0-9]{64}$'
+          description: New seller address (optional)
+        auditorAddress:
+          type: string
+          pattern: '^0x[a-fA-F0-9]{64}$'
+          description: New auditor address (optional)
+
+    UpdateDealRolesResponse:
+      type: object
+      required:
+        - deal
+        - transaction
+      properties:
+        deal:
+          $ref: '#/components/schemas/Deal'
+        transaction:
+          type: object
+          description: Unsigned transaction to update roles on-chain
+          required:
+            - txBytes
+            - description
+          properties:
+            txBytes:
+              type: string
+              description: Base64 encoded transaction bytes
+            description:
+              type: string
+              description: Transaction description
+              example: "Update deal roles"

@@ -1,0 +1,305 @@
+paths:
+  /deals:
+    get:
+      summary: List all deals for current user
+      description: |
+        **Purpose**: Retrieve all earn-out deals where the current user has a role (buyer, seller, or auditor)
+
+        **Business Logic**:
+        - Queries Sui blockchain for all deals where userAddress is buyer, seller, or auditor
+        - Aggregates with off-chain metadata for faster response
+        - Returns paginated list sorted by last activity
+        - Includes summary statistics for each deal
+
+        **Sui Integration**:
+        - Reads: Queries Deal objects on Sui where user has role
+        - Events: Reads recent events to determine last activity
+        - Caching: Results cached for 30 seconds
+
+        **Access Control**:
+        - Role: Any authenticated user
+        - Authentication: Requires X-Sui-Address and X-Sui-Signature headers
+      operationId: listDeals
+      tags:
+        - Deal Management
+      parameters:
+        - name: X-Sui-Address
+          in: header
+          required: true
+          schema:
+            type: string
+            pattern: '^0x[a-fA-F0-9]{64}$'
+          description: Sui wallet address of the user
+          example: "0xabcd1234567890abcdef1234567890abcdef1234567890abcdef1234567890"
+        - name: X-Sui-Signature
+          in: header
+          required: true
+          schema:
+            type: string
+          description: Signature proving ownership of the address
+        - name: role
+          in: query
+          required: false
+          schema:
+            type: string
+            enum: ["buyer", "seller", "auditor"]
+          description: Filter by user's role in deals
+          example: "buyer"
+        - name: status
+          in: query
+          required: false
+          schema:
+            type: string
+            enum: ["draft", "active", "completed", "cancelled"]
+          description: Filter by deal status
+          example: "active"
+        - name: limit
+          in: query
+          required: false
+          schema:
+            type: integer
+            minimum: 1
+            maximum: 100
+            default: 20
+          description: Maximum number of deals to return
+        - name: offset
+          in: query
+          required: false
+          schema:
+            type: integer
+            minimum: 0
+            default: 0
+          description: Number of deals to skip
+      responses:
+        '200':
+          description: Successfully retrieved deals list
+          content:
+            application/json:
+              schema:
+                $ref: '../schemas/deal.yaml#/components/schemas/DealListResponse'
+              example:
+                items:
+                  - dealId: "0x1234567890abcdef1234567890abcdef1234567890abcdef1234567890abcdef"
+                    name: "Acquisition of TechCorp Inc."
+                    closingDate: "2025-12-31"
+                    currency: "USD"
+                    status: "active"
+                    userRole: "buyer"
+                    periodCount: 3
+                    settledPeriods: 1
+                    lastActivity: "2026-03-15T09:30:00Z"
+                  - dealId: "0xabcdef1234567890abcdef1234567890abcdef1234567890abcdef1234567890"
+                    name: "SaaS Platform Acquisition"
+                    closingDate: "2026-06-30"
+                    currency: "USD"
+                    status: "draft"
+                    userRole: "auditor"
+                    periodCount: 2
+                    settledPeriods: 0
+                    lastActivity: "2026-01-10T14:00:00Z"
+                total: 2
+                hasMore: false
+                limit: 20
+                offset: 0
+        '401':
+          description: Unauthorized - Invalid or missing authentication
+          content:
+            application/json:
+              schema:
+                $ref: '../schemas/errors.yaml#/components/schemas/UnauthorizedError'
+        '500':
+          description: Internal server error
+          content:
+            application/json:
+              schema:
+                $ref: '../schemas/errors.yaml#/components/schemas/ErrorResponse'
+
+    post:
+      summary: Create a new earn-out deal
+      description: |
+        **Purpose**: Create a new M&A earn-out deal on the Sui blockchain
+
+        **Business Logic**:
+        - Creates on-chain Deal object via Move contract
+        - Stores metadata in local database for faster queries
+        - Initializes empty periods array (periods added via parameters endpoint)
+        - Returns unsigned transaction for user to sign with wallet
+
+        **Sui Integration**:
+        - Writes: Creates new Deal object via `earnout::create_deal()`
+        - Transaction: Returns unsigned transaction for frontend to sign
+        - Events: Emits `DealCreated` event on-chain with dealId
+        - Gas: Estimated ~1,000,000 MIST
+
+        **Seal Integration**:
+        - Creates corresponding Seal policy for this deal
+        - Initializes access control: buyer can read/write, seller/auditor can read
+
+        **Access Control**:
+        - Role: Buyer/Acquirer Admin only
+        - Verification: Checks that userAddress will be set as buyer
+      operationId: createDeal
+      tags:
+        - Deal Management
+      parameters:
+        - name: X-Sui-Address
+          in: header
+          required: true
+          schema:
+            type: string
+            pattern: '^0x[a-fA-F0-9]{64}$'
+          description: Sui wallet address (must be buyer)
+        - name: X-Sui-Signature
+          in: header
+          required: true
+          schema:
+            type: string
+          description: Signature proving ownership
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '../schemas/deal.yaml#/components/schemas/CreateDealRequest'
+            example:
+              name: "Acquisition of TechCorp Inc."
+              closingDate: "2025-12-31"
+              currency: "USD"
+              buyerAddress: "0xabcd1234567890abcdef1234567890abcdef1234567890abcdef1234567890"
+              sellerAddress: "0xef012345678890abcdef1234567890abcdef1234567890abcdef1234567890"
+              auditorAddress: "0x9876543210abcdef1234567890abcdef1234567890abcdef1234567890abcd"
+              metadata:
+                industry: "Technology"
+                dealSize: "50M USD"
+                notes: "Standard SaaS acquisition with 3-year earnout"
+      responses:
+        '201':
+          description: Deal created successfully (transaction ready to sign)
+          content:
+            application/json:
+              schema:
+                $ref: '../schemas/deal.yaml#/components/schemas/CreateDealResponse'
+              example:
+                deal:
+                  dealId: "0x1234567890abcdef1234567890abcdef1234567890abcdef1234567890abcdef"
+                  name: "Acquisition of TechCorp Inc."
+                  closingDate: "2025-12-31"
+                  currency: "USD"
+                  buyer: "0xabcd1234567890abcdef1234567890abcdef1234567890abcdef1234567890"
+                  seller: "0xef012345678890abcdef1234567890abcdef1234567890abcdef1234567890"
+                  auditor: "0x9876543210abcdef1234567890abcdef1234567890abcdef1234567890abcd"
+                  status: "draft"
+                  periods: []
+                  createdAt: "2025-11-16T10:00:00Z"
+                  updatedAt: "2025-11-16T10:00:00Z"
+                transaction:
+                  txBytes: "AAACAAgA..."
+                  description: "Create earn-out deal: Acquisition of TechCorp Inc."
+                  estimatedGas: 1000000
+        '400':
+          description: Validation error
+          content:
+            application/json:
+              schema:
+                $ref: '../schemas/errors.yaml#/components/schemas/ValidationError'
+        '401':
+          description: Unauthorized
+          content:
+            application/json:
+              schema:
+                $ref: '../schemas/errors.yaml#/components/schemas/UnauthorizedError'
+        '403':
+          description: Forbidden - User is not buyer
+          content:
+            application/json:
+              schema:
+                $ref: '../schemas/errors.yaml#/components/schemas/ForbiddenError'
+
+  /deals/{dealId}:
+    get:
+      summary: Get detailed information about a specific deal
+      description: |
+        **Purpose**: Retrieve complete details of an earn-out deal
+
+        **Business Logic**:
+        - Fetches Deal object from Sui blockchain
+        - Combines with off-chain metadata for enriched response
+        - Includes all periods, roles, and current status
+        - Verifies user has access to this deal
+
+        **Sui Integration**:
+        - Reads: Fetches Deal object by dealId
+        - Reads: Fetches all Period objects for this deal
+        - Events: Recent events for activity timeline
+        - Caching: Cached for 60 seconds (invalidated on updates)
+
+        **Access Control**:
+        - Role: Buyer, Seller, or Auditor of this deal
+        - Verification: Checks user address matches one of the roles
+      operationId: getDeal
+      tags:
+        - Deal Management
+      parameters:
+        - name: X-Sui-Address
+          in: header
+          required: true
+          schema:
+            type: string
+            pattern: '^0x[a-fA-F0-9]{64}$'
+          description: Sui wallet address
+        - name: X-Sui-Signature
+          in: header
+          required: true
+          schema:
+            type: string
+          description: Signature proving ownership
+        - name: dealId
+          in: path
+          required: true
+          schema:
+            type: string
+            pattern: '^0x[a-fA-F0-9]{64}$'
+          description: Sui object ID of the deal
+          example: "0x1234567890abcdef1234567890abcdef1234567890abcdef1234567890abcdef"
+      responses:
+        '200':
+          description: Successfully retrieved deal details
+          content:
+            application/json:
+              schema:
+                $ref: '../schemas/deal.yaml#/components/schemas/Deal'
+              example:
+                dealId: "0x1234567890abcdef1234567890abcdef1234567890abcdef1234567890abcdef"
+                name: "Acquisition of TechCorp Inc."
+                closingDate: "2025-12-31"
+                currency: "USD"
+                buyer: "0xabcd1234567890abcdef1234567890abcdef1234567890abcdef1234567890"
+                seller: "0xef012345678890abcdef1234567890abcdef1234567890abcdef1234567890"
+                auditor: "0x9876543210abcdef1234567890abcdef1234567890abcdef1234567890abcd"
+                status: "active"
+                periods:
+                  - periodId: "period_2026"
+                    name: "2026 Fiscal Year"
+                    startDate: "2026-01-01"
+                    endDate: "2026-12-31"
+                    status: "data_collection"
+                createdAt: "2025-11-16T10:00:00Z"
+                updatedAt: "2025-11-16T15:30:00Z"
+        '401':
+          description: Unauthorized
+          content:
+            application/json:
+              schema:
+                $ref: '../schemas/errors.yaml#/components/schemas/UnauthorizedError'
+        '403':
+          description: Forbidden - User is not a participant in this deal
+          content:
+            application/json:
+              schema:
+                $ref: '../schemas/errors.yaml#/components/schemas/ForbiddenError'
+        '404':
+          description: Deal not found
+          content:
+            application/json:
+              schema:
+                $ref: '../schemas/errors.yaml#/components/schemas/NotFoundError'

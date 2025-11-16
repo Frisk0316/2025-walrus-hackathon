@@ -1,0 +1,268 @@
+components:
+  schemas:
+    Period:
+      type: object
+      required:
+        - periodId
+        - name
+        - startDate
+        - endDate
+        - kpiTypes
+        - formula
+        - status
+      properties:
+        periodId:
+          type: string
+          description: Unique identifier for this period within the deal
+          example: "period_2026"
+        name:
+          type: string
+          description: Human-readable period name
+          example: "2026 Fiscal Year"
+        startDate:
+          type: string
+          format: date
+          description: Period start date
+          example: "2026-01-01"
+        endDate:
+          type: string
+          format: date
+          description: Period end date
+          example: "2026-12-31"
+        kpiTypes:
+          type: array
+          description: KPI types tracked for this period
+          minItems: 1
+          items:
+            $ref: '#/components/schemas/KPIType'
+        formula:
+          $ref: '#/components/schemas/EarnoutFormula'
+        walrusBlobs:
+          type: array
+          description: References to Walrus blobs containing period data
+          items:
+            $ref: './walrus.yaml#/components/schemas/WalrusBlobReference'
+        kpiProposal:
+          $ref: './kpi.yaml#/components/schemas/KPIProposal'
+        kpiAttestation:
+          $ref: './kpi.yaml#/components/schemas/KPIAttestation'
+        settlement:
+          $ref: '#/components/schemas/SettlementInfo'
+        status:
+          type: string
+          enum: ["pending", "data_collection", "kpi_proposed", "kpi_attested", "settled"]
+          description: |
+            Current period status:
+            - pending: Period not yet started
+            - data_collection: In progress, collecting data
+            - kpi_proposed: Buyer has proposed KPI
+            - kpi_attested: Auditor has attested KPI
+            - settled: Settlement completed
+          example: "data_collection"
+
+    KPIType:
+      type: object
+      required:
+        - type
+        - threshold
+        - unit
+      properties:
+        type:
+          type: string
+          enum: ["revenue", "ebitda", "user_growth", "arr", "custom"]
+          description: Type of KPI metric
+          example: "revenue"
+        name:
+          type: string
+          description: Custom name (required if type is 'custom')
+          example: "Monthly Recurring Revenue"
+        threshold:
+          type: number
+          description: Minimum threshold to achieve earn-out
+          example: 10000000
+        unit:
+          type: string
+          description: Unit of measurement
+          example: "USD"
+        description:
+          type: string
+          description: Detailed KPI description
+          example: "Total revenue recognized in fiscal year 2026"
+
+    EarnoutFormula:
+      type: object
+      required:
+        - type
+        - maxPayout
+      properties:
+        type:
+          type: string
+          enum: ["linear", "stepped", "percentage", "custom"]
+          description: |
+            Formula type:
+            - linear: Payout increases linearly with KPI
+            - stepped: Payout increases in discrete steps
+            - percentage: Payout is a percentage of KPI value
+            - custom: Custom formula with parameters
+          example: "linear"
+        maxPayout:
+          type: number
+          description: Maximum possible payout amount
+          example: 5000000
+        parameters:
+          type: object
+          description: Formula-specific parameters
+          additionalProperties: true
+          example:
+            minKPI: 10000000
+            maxKPI: 15000000
+            minPayout: 0
+            maxPayout: 5000000
+        description:
+          type: string
+          description: Human-readable formula explanation
+          example: "Linear payout from $0 to $5M as revenue grows from $10M to $15M"
+
+    SettlementInfo:
+      type: object
+      description: Settlement information for a period
+      properties:
+        settled:
+          type: boolean
+          description: Whether settlement has been executed
+          example: true
+        settledAt:
+          type: string
+          format: date-time
+          description: Settlement timestamp
+          example: "2027-02-15T14:30:00Z"
+        payoutAmount:
+          type: number
+          description: Actual payout amount transferred
+          example: 3000000
+        txHash:
+          type: string
+          description: Sui transaction hash for settlement
+          pattern: '^[A-Za-z0-9+/=]{44}$'
+          example: "8vqKfZTqP9J3xYz1RmN2BcD4LpW7Qh5K"
+        recipient:
+          type: string
+          description: Sui address that received the payout
+          pattern: '^0x[a-fA-F0-9]{64}$'
+          example: "0xef012345678890abcdef1234567890abcdef1234567890abcdef1234567890"
+
+    SetParametersRequest:
+      type: object
+      required:
+        - periods
+      properties:
+        periods:
+          type: array
+          description: Array of period configurations
+          minItems: 1
+          items:
+            type: object
+            required:
+              - name
+              - startDate
+              - endDate
+              - kpiTypes
+              - formula
+            properties:
+              name:
+                type: string
+                description: Period name
+                example: "2026 Fiscal Year"
+              startDate:
+                type: string
+                format: date
+                example: "2026-01-01"
+              endDate:
+                type: string
+                format: date
+                example: "2026-12-31"
+              kpiTypes:
+                type: array
+                minItems: 1
+                items:
+                  $ref: '#/components/schemas/KPIType'
+              formula:
+                $ref: '#/components/schemas/EarnoutFormula'
+
+    SetParametersResponse:
+      type: object
+      required:
+        - parameters
+        - summary
+        - transaction
+      properties:
+        parameters:
+          type: object
+          description: Encoded parameters for on-chain storage
+          properties:
+            periods:
+              type: array
+              items:
+                $ref: '#/components/schemas/Period'
+        summary:
+          type: string
+          description: |
+            Human-readable summary of earn-out terms
+            Example:
+            "2026 Period: If Revenue ≥ $10M, earn-out up to $5M based on linear formula.
+             2027 Period: If EBITDA ≥ $8M, earn-out up to $3M based on stepped formula."
+          example: |
+            Period 1 (2026-01-01 to 2026-12-31):
+            - KPI: Revenue (threshold: $10,000,000 USD)
+            - Max payout: $5,000,000 USD
+            - Formula: Linear from $0 to $5M as revenue grows from $10M to $15M
+        transaction:
+          type: object
+          description: Unsigned transaction to lock parameters on-chain
+          required:
+            - txBytes
+            - description
+            - warning
+          properties:
+            txBytes:
+              type: string
+              description: Base64 encoded transaction bytes
+            description:
+              type: string
+              example: "Lock earn-out parameters for deal"
+            warning:
+              type: string
+              description: Important warning about parameter locking
+              example: "WARNING: Once locked, these parameters cannot be changed without mutual agreement"
+            estimatedGas:
+              type: integer
+              description: Estimated gas cost
+              example: 2000000
+
+    GetParametersResponse:
+      type: object
+      required:
+        - dealId
+        - periods
+        - locked
+      properties:
+        dealId:
+          type: string
+          description: Deal ID
+          example: "0x1234567890abcdef1234567890abcdef1234567890abcdef1234567890abcdef"
+        periods:
+          type: array
+          items:
+            $ref: '#/components/schemas/Period'
+        locked:
+          type: boolean
+          description: Whether parameters are locked on-chain
+          example: true
+        lockedAt:
+          type: string
+          format: date-time
+          description: When parameters were locked
+          example: "2025-11-20T10:00:00Z"
+        summary:
+          type: string
+          description: Human-readable summary

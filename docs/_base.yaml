@@ -1,12 +1,149 @@
 openapi: 3.0.0
 info:
-  title: Walrus Hackathon API
+  title: M&A Earn-out API
   version: 1.0.0
-  description: API documentation for Walrus Hackathon project
+  description: |
+    # M&A Earn-out Management API
+
+    This API powers a decentralized M&A earn-out tracking and settlement system built on **Sui blockchain**, **Walrus decentralized storage**, and **Seal encryption**.
+
+    ## System Overview
+
+    The system enables buyers (acquirers), sellers, and auditors to:
+    - Create and manage earn-out agreements on-chain
+    - Store encrypted financial documents on Walrus
+    - Track KPIs and verify calculations transparently
+    - Execute settlements automatically based on audited KPIs
+
+    ## Technology Stack
+
+    - **Blockchain**: Sui Network (smart contracts in Move)
+    - **Storage**: Walrus (decentralized file storage)
+    - **Encryption**: Seal (role-based access control)
+    - **Frontend**: Next.js with @mysten/dapp-kit
+
+    ## Key Concepts
+
+    ### Deal
+    An on-chain earn-out agreement with defined periods, KPI types, and payout formulas. Each deal has three roles:
+    - **Buyer**: Creates deal, uploads data, proposes KPIs, executes settlements
+    - **Seller**: Monitors progress, receives payouts
+    - **Auditor**: Verifies data, attests KPIs
+
+    ### Period
+    A time range (e.g., fiscal year) with specific KPI targets and earn-out formulas. Each period progresses through stages:
+    1. Data Collection (buyer uploads financial documents)
+    2. KPI Proposal (buyer proposes calculated KPI)
+    3. KPI Attestation (auditor verifies and approves)
+    4. Settlement (buyer executes payout to seller)
+
+    ### Walrus Blobs
+    Encrypted financial documents stored on Walrus network. Access controlled by Seal policy on Sui blockchain.
+
+    ### KPI (Key Performance Indicator)
+    Metrics like revenue, EBITDA, or custom metrics that determine earn-out amounts according to on-chain formulas.
+
+    ## Authentication
+
+    This API uses **Sui wallet signature-based authentication**. Every request must include:
+    - `X-Sui-Address`: User's Sui wallet address
+    - `X-Sui-Signature`: Signature proving ownership of the address
+
+    Role-based access control is enforced on-chain via Sui smart contracts.
+
+    ## Workflow
+
+    1. **Setup**: Buyer creates deal and sets earn-out parameters
+    2. **Data Upload**: Buyer uploads encrypted financial docs to Walrus (via upload relay)
+    3. **KPI Proposal**: After period ends, buyer proposes KPI value
+    4. **Verification**: Auditor decrypts docs, verifies calculations, attests KPI
+    5. **Settlement**: Buyer executes settlement, funds transferred to seller
+
+    ## API Organization
+
+    - **Deal Management**: Create and manage earn-out deals
+    - **Parameters**: Configure earn-out formulas and periods
+    - **Walrus**: Upload relay for encrypted file storage
+    - **Timeline**: View data submission history
+    - **KPI Management**: Propose and attest KPIs
+    - **Settlement**: Execute earn-out payments
+    - **Dashboard**: Aggregated view of deal status
+
+  contact:
+    name: API Support
+    url: https://github.com/yourusername/walrus-hackathon
+  license:
+    name: MIT
+    url: https://opensource.org/licenses/MIT
 
 servers:
-  - url: http://localhost:3000
-    description: Development server
+  - url: http://localhost:3000/api/v1
+    description: Development server (API v1)
+  - url: https://api.earnout.example.com/api/v1
+    description: Production server (API v1, future)
+
+tags:
+  - name: Deal Management
+    description: |
+      Create, list, and manage M&A earn-out deals.
+
+      Deals are on-chain agreements stored on Sui blockchain with buyer, seller, and auditor roles.
+  - name: Parameters
+    description: |
+      Configure earn-out parameters including periods, KPI types, and payout formulas.
+
+      Parameters are locked on-chain and become immutable after confirmation.
+  - name: Walrus
+    description: |
+      Upload encrypted files to Walrus decentralized storage.
+
+      Upload relay reduces browser load from ~2000 requests to 1 API call.
+  - name: Timeline
+    description: |
+      View chronological timeline of data uploads.
+
+      Shows all Walrus blobs registered on-chain for a deal.
+  - name: KPI Management
+    description: |
+      Propose and attest Key Performance Indicators.
+
+      Buyer proposes KPIs, auditor verifies and attests after reviewing encrypted documents.
+  - name: Settlement
+    description: |
+      Execute earn-out settlements based on attested KPIs.
+
+      Transfers funds from buyer to seller according to on-chain formulas.
+  - name: Dashboard
+    description: |
+      Comprehensive dashboard view of deal status and health.
+
+      Aggregates data from Sui blockchain, Walrus metadata, and calculates health metrics.
 
 components:
+  securitySchemes:
+    SuiWalletAuth:
+      type: apiKey
+      in: header
+      name: X-Sui-Address
+      description: |
+        Sui wallet address of the authenticated user.
+
+        Must be a valid Sui address (0x + 64 hex characters).
+
+        Example: 0xabcd1234567890abcdef1234567890abcdef1234567890abcdef1234567890
+    SuiSignature:
+      type: apiKey
+      in: header
+      name: X-Sui-Signature
+      description: |
+        Cryptographic signature proving ownership of the Sui address.
+
+        Generated by signing a challenge message with the user's Sui wallet.
+
+        This proves the user controls the private key for X-Sui-Address.
+
   schemas: {}
+
+security:
+  - SuiWalletAuth: []
+    SuiSignature: []

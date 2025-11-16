@@ -1,0 +1,164 @@
+components:
+  schemas:
+    ErrorResponse:
+      type: object
+      required:
+        - error
+        - message
+        - statusCode
+      properties:
+        error:
+          type: string
+          description: Error type or category
+          example: "ValidationError"
+        message:
+          type: string
+          description: Human-readable error message
+          example: "Invalid deal ID format"
+        statusCode:
+          type: integer
+          description: HTTP status code
+          example: 400
+        details:
+          type: object
+          description: Additional error details (optional)
+          additionalProperties: true
+          example:
+            field: "dealId"
+            constraint: "Must be a valid Sui object ID"
+        timestamp:
+          type: string
+          format: date-time
+          description: Error occurrence timestamp
+          example: "2026-01-15T10:30:00Z"
+
+    ValidationError:
+      allOf:
+        - $ref: '#/components/schemas/ErrorResponse'
+        - type: object
+          properties:
+            error:
+              type: string
+              enum: ["ValidationError"]
+            validationErrors:
+              type: array
+              items:
+                type: object
+                properties:
+                  field:
+                    type: string
+                    description: Field name that failed validation
+                  message:
+                    type: string
+                    description: Validation error message
+                  constraint:
+                    type: string
+                    description: Constraint that was violated
+
+    UnauthorizedError:
+      allOf:
+        - $ref: '#/components/schemas/ErrorResponse'
+        - type: object
+          properties:
+            error:
+              type: string
+              enum: ["UnauthorizedError"]
+            statusCode:
+              type: integer
+              enum: [401]
+
+    ForbiddenError:
+      allOf:
+        - $ref: '#/components/schemas/ErrorResponse'
+        - type: object
+          properties:
+            error:
+              type: string
+              enum: ["ForbiddenError"]
+            statusCode:
+              type: integer
+              enum: [403]
+            requiredRole:
+              type: string
+              description: Role required to perform this action
+              example: "buyer"
+
+    NotFoundError:
+      allOf:
+        - $ref: '#/components/schemas/ErrorResponse'
+        - type: object
+          properties:
+            error:
+              type: string
+              enum: ["NotFoundError"]
+            statusCode:
+              type: integer
+              enum: [404]
+            resourceType:
+              type: string
+              description: Type of resource that was not found
+              example: "Deal"
+            resourceId:
+              type: string
+              description: ID of the resource that was not found
+              example: "0x123abc..."
+
+    ConflictError:
+      allOf:
+        - $ref: '#/components/schemas/ErrorResponse'
+        - type: object
+          properties:
+            error:
+              type: string
+              enum: ["ConflictError"]
+            statusCode:
+              type: integer
+              enum: [409]
+            conflictReason:
+              type: string
+              description: Reason for the conflict
+              example: "Period already settled"
+
+    PaginationParams:
+      type: object
+      properties:
+        limit:
+          type: integer
+          minimum: 1
+          maximum: 100
+          default: 20
+          description: Maximum number of items to return
+          example: 20
+        offset:
+          type: integer
+          minimum: 0
+          default: 0
+          description: Number of items to skip
+          example: 0
+
+    PaginatedResponse:
+      type: object
+      required:
+        - items
+        - total
+        - hasMore
+      properties:
+        items:
+          type: array
+          description: Array of result items
+        total:
+          type: integer
+          description: Total number of items available
+          example: 150
+        hasMore:
+          type: boolean
+          description: Whether there are more items beyond this page
+          example: true
+        limit:
+          type: integer
+          description: Limit used for this page
+          example: 20
+        offset:
+          type: integer
+          description: Offset used for this page
+          example: 0

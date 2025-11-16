@@ -1,0 +1,283 @@
+components:
+  schemas:
+    WalrusBlobReference:
+      type: object
+      description: Reference to a file stored on Walrus
+      required:
+        - blobId
+        - dataType
+        - uploadedAt
+        - uploaderAddress
+      properties:
+        blobId:
+          type: string
+          description: |
+            Walrus blob identifier
+            This is the unique ID returned by Walrus after upload
+          example: "blob_2Nf8pQz3Xm7Yk5Rd9Wv1Bc6Lt4Hs"
+        commitment:
+          type: string
+          description: Cryptographic commitment hash from Walrus
+          example: "sha256:a1b2c3d4e5f6..."
+        dataType:
+          type: string
+          description: Type of data stored in this blob
+          enum: [
+            "revenue_journal",
+            "ebitda_report",
+            "expense_report",
+            "balance_sheet",
+            "cash_flow",
+            "kpi_calculation",
+            "audit_report",
+            "custom"
+          ]
+          example: "revenue_journal"
+        customDataType:
+          type: string
+          description: Custom data type name (if dataType is 'custom')
+          example: "Customer Acquisition Cost Report"
+        size:
+          type: integer
+          description: File size in bytes
+          example: 2048576
+        uploadedAt:
+          type: string
+          format: date-time
+          description: Upload timestamp
+          example: "2026-03-15T09:30:00Z"
+        uploaderAddress:
+          type: string
+          description: Sui address of the uploader
+          pattern: '^0x[a-fA-F0-9]{64}$'
+          example: "0xabcd1234567890abcdef1234567890abcdef1234567890abcdef1234567890"
+        metadata:
+          type: object
+          description: Additional metadata about the file
+          properties:
+            filename:
+              type: string
+              description: Original filename
+              example: "revenue_q1_2026.csv"
+            mimeType:
+              type: string
+              description: MIME type
+              example: "text/csv"
+            description:
+              type: string
+              description: File description
+              example: "Q1 2026 revenue journal entries"
+            periodId:
+              type: string
+              description: Associated period ID
+              example: "period_2026"
+            encrypted:
+              type: boolean
+              description: Whether the blob contains encrypted data
+              example: true
+            sealPolicyId:
+              type: string
+              description: Seal policy ID for access control
+              example: "0xpolicy123..."
+
+    WalrusUploadRequest:
+      type: object
+      required:
+        - file
+        - dealId
+        - periodId
+        - dataType
+      properties:
+        file:
+          type: string
+          format: binary
+          description: |
+            Encrypted file to upload (ciphertext)
+
+            **Encryption Flow:**
+            1. Frontend encrypts file using @mysten/seal SDK
+            2. Encrypted ciphertext is sent to this endpoint
+            3. Backend uploads ciphertext to Walrus
+            4. Walrus stores only the encrypted data
+          example: "[Binary encrypted data]"
+        dealId:
+          type: string
+          description: Deal ID this file belongs to
+          pattern: '^0x[a-fA-F0-9]{64}$'
+          example: "0x1234567890abcdef1234567890abcdef1234567890abcdef1234567890abcdef"
+        periodId:
+          type: string
+          description: Period ID this file belongs to
+          example: "period_2026"
+        dataType:
+          type: string
+          description: Type of data being uploaded
+          enum: [
+            "revenue_journal",
+            "ebitda_report",
+            "expense_report",
+            "balance_sheet",
+            "cash_flow",
+            "kpi_calculation",
+            "audit_report",
+            "custom"
+          ]
+          example: "revenue_journal"
+        customDataType:
+          type: string
+          description: Custom type name (if dataType is 'custom')
+        filename:
+          type: string
+          description: Original filename
+          example: "revenue_q1_2026.csv"
+        description:
+          type: string
+          maxLength: 500
+          description: File description
+          example: "Q1 2026 revenue journal with transaction details"
+        metadata:
+          type: object
+          description: Additional metadata
+          additionalProperties: true
+
+    WalrusUploadResponse:
+      type: object
+      required:
+        - blobId
+        - commitment
+        - size
+        - uploadedAt
+      properties:
+        blobId:
+          type: string
+          description: Walrus blob ID
+          example: "blob_2Nf8pQz3Xm7Yk5Rd9Wv1Bc6Lt4Hs"
+        commitment:
+          type: string
+          description: Cryptographic commitment
+          example: "sha256:a1b2c3d4e5f6..."
+        size:
+          type: integer
+          description: Uploaded file size
+          example: 2048576
+        uploadedAt:
+          type: string
+          format: date-time
+          description: Upload timestamp
+          example: "2026-03-15T09:30:00Z"
+        blobReference:
+          $ref: '#/components/schemas/WalrusBlobReference'
+        nextStep:
+          type: object
+          description: Instructions for next step
+          properties:
+            action:
+              type: string
+              enum: ["register_on_chain"]
+              description: What to do next
+              example: "register_on_chain"
+            description:
+              type: string
+              example: "Call POST /api/v1/deals/{dealId}/periods/{periodId}/blobs to register this blob on-chain"
+            transaction:
+              type: object
+              description: Transaction to register blob on Sui
+              properties:
+                txBytes:
+                  type: string
+                  description: Unsigned transaction bytes
+                description:
+                  type: string
+                  example: "Register Walrus blob: revenue_journal for period_2026"
+
+    WalrusBlobMetadata:
+      allOf:
+        - $ref: '#/components/schemas/WalrusBlobReference'
+        - type: object
+          properties:
+            accessControl:
+              type: object
+              description: Access control information
+              properties:
+                sealPolicyId:
+                  type: string
+                  description: Seal policy ID
+                  example: "0xpolicy123..."
+                allowedRoles:
+                  type: array
+                  description: Roles that can decrypt this blob
+                  items:
+                    type: string
+                    enum: ["buyer", "seller", "auditor"]
+                  example: ["buyer", "seller", "auditor"]
+            onChainStatus:
+              type: object
+              description: On-chain registration status
+              properties:
+                registered:
+                  type: boolean
+                  description: Whether blob is registered on Sui
+                  example: true
+                txHash:
+                  type: string
+                  description: Registration transaction hash
+                  example: "7vqKfZTqP9J3xYz1RmN2BcD4LpW7Qh5K"
+
+    DataTimelineResponse:
+      allOf:
+        - $ref: './errors.yaml#/components/schemas/PaginatedResponse'
+        - type: object
+          properties:
+            items:
+              type: array
+              items:
+                $ref: '#/components/schemas/TimelineEntry'
+
+    TimelineEntry:
+      type: object
+      description: Single entry in data timeline
+      required:
+        - timestamp
+        - dataType
+        - blobId
+        - periodId
+        - submittedBy
+      properties:
+        timestamp:
+          type: string
+          format: date-time
+          description: Upload timestamp
+          example: "2026-03-15T09:30:00Z"
+        dataType:
+          type: string
+          description: Type of data
+          example: "revenue_journal"
+        periodId:
+          type: string
+          description: Period this belongs to
+          example: "period_2026"
+        periodName:
+          type: string
+          description: Human-readable period name
+          example: "2026 Fiscal Year"
+        blobId:
+          type: string
+          description: Walrus blob ID
+          example: "blob_2Nf8pQz3Xm7Yk5Rd9Wv1Bc6Lt4Hs"
+        size:
+          type: integer
+          description: File size
+          example: 2048576
+        filename:
+          type: string
+          description: Original filename
+          example: "revenue_q1_2026.csv"
+        submittedBy:
+          type: string
+          description: Uploader address
+          pattern: '^0x[a-fA-F0-9]{64}$'
+          example: "0xabcd1234567890abcdef1234567890abcdef1234567890abcdef1234567890"
+        description:
+          type: string
+          description: File description
+          example: "Q1 2026 revenue journal"

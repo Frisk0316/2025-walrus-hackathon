@@ -6,7 +6,8 @@
     "dev": "next dev",
     "build": "next build",
     "start": "next start",
-    "lint": "eslint"
+    "lint": "eslint",
+    "generate:api-client": "openapi-generator-cli generate -i http://localhost:3000/api/openapi -g typescript-fetch -o src/frontend/lib/api-client --additional-properties=supportsES6=true,withInterfaces=true,useSingleRequestParameter=true,modelPropertyNaming=original"
   },
   "dependencies": {
     "@hookform/resolvers": "^5.2.2",

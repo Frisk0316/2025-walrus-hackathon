@@ -48,7 +48,7 @@ export function Footer() {
               </li>
               <li>
                 <a
-                  href="https://docs.sui.io/standards/seal"
+                  href="https://seal.mystenlabs.com/"
                   target="_blank"
                   rel="noopener noreferrer"
                   className="hover:text-foreground transition-colors"

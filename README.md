@@ -1,17 +1,52 @@
 This is a [Next.js](https://nextjs.org) project bootstrapped with [`create-next-app`](https://nextjs.org/docs/app/api-reference/cli/create-next-app).
 
+## Project Structure
+
+This project follows a **Next.js Hybrid Architecture** pattern with clear frontend/backend separation:
+
+```
+/
+├── app/
+│   ├── (frontend)/         # Route group - Frontend pages
+│   │   ├── page.tsx       # Homepage
+│   │   └── ...            # Other frontend routes
+│   │
+│   ├── api/               # Backend API routes
+│   │   ├── v1/           # API version 1
+│   │   │   └── ...       # Other API endpoints
+│   │   ├── health/       # Health check endpoint
+│   │   └── openapi/      # OpenAPI specification endpoint
+│   │
+│   └── api-docs/          # API documentation page (Swagger UI)
+│
+├── src/
+│   ├── backend/           # Backend: Controllers → Services → Repositories
+│   ├── frontend/          # Frontend: Components, Hooks, Lib
+│   └── shared/            # Shared: Types, Validators, Utils
+│
+├── docs/                  # OpenAPI specs organized by version
+└── public/               # Static assets
+```
+
+> 📖 **For detailed development guidelines**, see [DEVELOPMENT_GUIDE.md](./DEVELOPMENT_GUIDE.md)
+>
+> This includes:
+> - Directory structure and responsibilities
+> - Naming conventions
+> - Backend layered architecture (Controller-Service-Repository pattern)
+> - Error handling strategies
+> - API versioning guidelines
+> - **OpenAPI code generation** (auto-generate type-safe clients)
+> - Testing strategies
+
 ## Getting Started
 
 First, run the development server:
 
 ```bash
+npm install
+
 npm run dev
-# or
-yarn dev
-# or
-pnpm dev
-# or
-bun dev
 ```
 
 Open [http://localhost:3000](http://localhost:3000) with your browser to see the result.

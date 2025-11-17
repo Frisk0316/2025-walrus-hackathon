@@ -2,6 +2,7 @@
 
 import { QueryClient, QueryClientProvider } from '@tanstack/react-query';
 import { SuiClientProvider, WalletProvider } from '@mysten/dapp-kit';
+import { ThemeProvider } from 'next-themes';
 import { networkConfig } from '@/src/frontend/lib/sui-client';
 import { useState } from 'react';
 
@@ -22,12 +23,14 @@ export function Providers({ children }: { children: React.ReactNode }) {
   );
 
   return (
-    <QueryClientProvider client={queryClient}>
-      <SuiClientProvider networks={networkConfig} defaultNetwork="testnet">
-        <WalletProvider autoConnect>
-          {children}
-        </WalletProvider>
-      </SuiClientProvider>
-    </QueryClientProvider>
+    <ThemeProvider attribute="class" forcedTheme="light" enableSystem={false}>
+      <QueryClientProvider client={queryClient}>
+        <SuiClientProvider networks={networkConfig} defaultNetwork="testnet">
+          <WalletProvider autoConnect>
+            {children}
+          </WalletProvider>
+        </SuiClientProvider>
+      </QueryClientProvider>
+    </ThemeProvider>
   );
 }

@@ -1,9 +1,9 @@
 paths:
   /walrus/upload:
     post:
-      summary: Upload encrypted file to Walrus (Upload Relay)
+      summary: Upload file to Walrus (Hybrid Encryption Mode)
       description: |
-        **Purpose**: Upload encrypted financial documents to Walrus decentralized storage
+        **Purpose**: Upload financial documents to Walrus decentralized storage with flexible encryption
 
         **Why Upload Relay is Needed**:
         - Direct browser uploads to Walrus require ~2000+ HTTP requests per file
@@ -11,15 +11,29 @@ paths:
         - Upload relay reduces this to a single API call from frontend
         - Backend handles the heavy lifting using @mysten/walrus SDK
 
-        **Upload Flow**:
-        1. **Frontend**: User selects file (e.g., revenue_q1_2026.csv)
-        2. **Frontend**: Encrypts file using @mysten/seal SDK → produces ciphertext
-        3. **Frontend**: Sends ciphertext to this endpoint via multipart/form-data
-        4. **Backend**: Receives encrypted file
-        5. **Backend**: Uses Walrus SDK to upload ciphertext to Walrus network
-        6. **Walrus**: Returns blobId and commitment
-        7. **Backend**: Returns blob metadata to frontend
-        8. **Frontend**: Signs Sui transaction to register blob on-chain
+        **Encryption Modes** (controlled by `mode` query parameter):
+
+        **Mode A: client_encrypted (Default, Recommended)**
+        - File is encrypted by frontend using @mysten/seal SDK before upload
+        - Backend only relays the ciphertext to Walrus (never sees plaintext)
+        - Highest security: Backend cannot access file contents
+        - Fully Web3: User controls their own data encryption
+
+        Upload Flow:
+        1. Frontend: User selects file → Encrypts with Seal SDK → Sends ciphertext
+        2. Backend: Receives ciphertext → Uploads to Walrus → Returns blobId
+        3. Frontend: Signs Sui transaction to register blob on-chain
+
+        **Mode B: server_encrypted (Convenience Mode)**
+        - Frontend sends plaintext file to backend
+        - Backend encrypts using Seal SDK, then uploads to Walrus
+        - Simplified frontend: No need to integrate Seal SDK
+        - Trade-off: Backend can access plaintext (trusted environment required)
+
+        Upload Flow:
+        1. Frontend: User selects file → Sends plaintext to backend
+        2. Backend: Encrypts with Seal → Uploads to Walrus → Returns blobId
+        3. Frontend: Signs Sui transaction to register blob on-chain
 
         **Walrus Integration**:
         - SDK: Uses @mysten/walrus TypeScript SDK
@@ -28,9 +42,9 @@ paths:
         - Metadata: Returns blobId and commitment for on-chain registration
 
         **Seal Integration**:
-        - Encryption: File is already encrypted by frontend using Seal SDK
         - Policy: earnout_seal_policy controls who can decrypt
-        - Access: Only buyer/seller/auditor can later decrypt this blob
+        - Access: Only buyer/seller/auditor can decrypt based on on-chain roles
+        - Decryption keys: Managed by Seal Key Servers with blockchain verification
 
         **Next Steps After Upload**:
         - Frontend must call a Sui transaction to register this blobId on-chain
@@ -44,12 +58,23 @@ paths:
       tags:
         - Walrus
       parameters:
+        - name: mode
+          in: query
+          required: false
+          schema:
+            type: string
+            enum: [client_encrypted, server_encrypted]
+            default: client_encrypted
+          description: |
+            Encryption mode:
+            - `client_encrypted`: File already encrypted by frontend (default, most secure)
+            - `server_encrypted`: Backend encrypts file (convenience mode, requires trust)
         - name: X-Sui-Address
           in: header
           required: true
           schema:
             type: string
-            pattern: '^0x[a-fA-F0-9]{64}$'
+            pattern: "^0x[a-fA-F0-9]{64}$"
           description: Sui wallet address of uploader
         - name: X-Sui-Signature
           in: header
@@ -73,11 +98,12 @@ paths:
                   type: string
                   format: binary
                   description: |
-                    Encrypted file (ciphertext)
-                    IMPORTANT: This must be encrypted using Seal SDK before upload
+                    File data (plaintext or ciphertext depending on mode):
+                    - `client_encrypted` mode: Encrypted ciphertext from Seal SDK
+                    - `server_encrypted` mode: Plaintext file (backend will encrypt)
                 dealId:
                   type: string
-                  pattern: '^0x[a-fA-F0-9]{64}$'
+                  pattern: "^0x[a-fA-F0-9]{64}$"
                   description: Deal ID this file belongs to
                   example: "0x1234567890abcdef1234567890abcdef1234567890abcdef1234567890abcdef"
                 periodId:
@@ -86,16 +112,17 @@ paths:
                   example: "period_2026"
                 dataType:
                   type: string
-                  enum: [
-                    "revenue_journal",
-                    "ebitda_report",
-                    "expense_report",
-                    "balance_sheet",
-                    "cash_flow",
-                    "kpi_calculation",
-                    "audit_report",
-                    "custom"
-                  ]
+                  enum:
+                    [
+                      "revenue_journal",
+                      "ebitda_report",
+                      "expense_report",
+                      "balance_sheet",
+                      "cash_flow",
+                      "kpi_calculation",
+                      "audit_report",
+                      "custom",
+                    ]
                   description: Type of financial data
                   example: "revenue_journal"
                 customDataType:
@@ -105,7 +132,7 @@ paths:
                 filename:
                   type: string
                   description: Original filename
-                  example: "revenue_q1_2026.csv"
+                  example: "revenue_q1_2026.pdf"
                 description:
                   type: string
                   maxLength: 500
@@ -119,12 +146,12 @@ paths:
               filename: "revenue_q1_2026.csv"
               description: "Q1 2026 revenue journal"
       responses:
-        '200':
+        "200":
           description: File successfully uploaded to Walrus
           content:
             application/json:
               schema:
-                $ref: '../schemas/walrus.yaml#/components/schemas/WalrusUploadResponse'
+                $ref: "../schemas/walrus.yaml#/components/schemas/WalrusUploadResponse"
               example:
                 blobId: "blob_2Nf8pQz3Xm7Yk5Rd9Wv1Bc6Lt4Hs"
                 commitment: "sha256:a1b2c3d4e5f67890abcdef1234567890abcdef1234567890abcdef12345678"
@@ -148,12 +175,12 @@ paths:
                   transaction:
                     txBytes: "AAACAAgA..."
                     description: "Register Walrus blob: revenue_journal for period_2026"
-        '400':
+        "400":
           description: Validation error
           content:
             application/json:
               schema:
-                $ref: '../schemas/errors.yaml#/components/schemas/ValidationError'
+                $ref: "../schemas/errors.yaml#/components/schemas/ValidationError"
               examples:
                 missingFile:
                   value:
@@ -168,33 +195,200 @@ paths:
                     details:
                       maxSize: 104857600
                       actualSize: 150000000
-        '401':
+        "401":
           description: Unauthorized
           content:
             application/json:
               schema:
-                $ref: '../schemas/errors.yaml#/components/schemas/UnauthorizedError'
-        '403':
+                $ref: "../schemas/errors.yaml#/components/schemas/UnauthorizedError"
+        "403":
           description: Forbidden - User not authorized for this deal
           content:
             application/json:
               schema:
-                $ref: '../schemas/errors.yaml#/components/schemas/ForbiddenError'
-        '404':
+                $ref: "../schemas/errors.yaml#/components/schemas/ForbiddenError"
+        "404":
           description: Deal or period not found
           content:
             application/json:
               schema:
-                $ref: '../schemas/errors.yaml#/components/schemas/NotFoundError'
-        '500':
+                $ref: "../schemas/errors.yaml#/components/schemas/NotFoundError"
+        "500":
           description: Walrus upload failed
           content:
             application/json:
               schema:
-                $ref: '../schemas/errors.yaml#/components/schemas/ErrorResponse'
+                $ref: "../schemas/errors.yaml#/components/schemas/ErrorResponse"
               example:
                 error: "WalrusUploadError"
                 message: "Failed to upload file to Walrus network"
                 statusCode: 500
                 details:
                   reason: "Connection timeout to Walrus aggregator"
+
+  /walrus/download/{blobId}:
+    get:
+      summary: Download file from Walrus (Hybrid Decryption Mode)
+      description: |
+        **Purpose**: Download financial documents from Walrus with flexible decryption
+
+        **Decryption Modes** (controlled by `mode` query parameter):
+
+        **Mode A: client_encrypted (Default, Recommended)**
+        - Backend downloads ciphertext from Walrus and returns it to frontend
+        - Frontend decrypts using @mysten/seal SDK with Seal Key Server
+        - Highest security: Backend never sees plaintext
+        - Fully Web3: User controls their own decryption keys
+
+        Download Flow:
+        1. Frontend: Requests blobId with user's Sui address
+        2. Backend: Verifies access → Downloads from Walrus → Returns ciphertext
+        3. Frontend: Requests decryption key from Seal Key Server → Decrypts locally
+
+        **Mode B: server_encrypted (Convenience Mode)**
+        - Backend downloads from Walrus, decrypts, and returns plaintext
+        - Simplified frontend: No need to integrate Seal SDK
+        - Trade-off: Backend can access plaintext (trusted environment required)
+
+        Download Flow:
+        1. Frontend: Requests blobId with user's Sui address
+        2. Backend: Verifies access → Downloads → Decrypts → Returns plaintext
+        3. Frontend: Receives ready-to-use plaintext file
+
+        **Access Control**:
+        - Verification: User must be buyer/seller/auditor in the specified deal
+        - On-chain check: Backend queries Sui blockchain to verify user's role
+        - Seal Policy: Even in server mode, access is governed by earnout_seal_policy
+
+        **Security Notes**:
+        - All access attempts are logged for audit trail
+        - Invalid access attempts return 403 Forbidden
+        - Decryption keys are never stored, only fetched on-demand from Seal Key Servers
+      operationId: downloadFromWalrus
+      tags:
+        - Walrus
+      parameters:
+        - name: blobId
+          in: path
+          required: true
+          schema:
+            type: string
+          description: Walrus blob ID to download
+          example: "blob_2Nf8pQz3Xm7Yk5Rd9Wv1Bc6Lt4Hs"
+        - name: mode
+          in: query
+          required: false
+          schema:
+            type: string
+            enum: [client_encrypted, server_encrypted]
+            default: client_encrypted
+          description: |
+            Decryption mode:
+            - `client_encrypted`: Return ciphertext for frontend decryption (default, most secure)
+            - `server_encrypted`: Backend decrypts and returns plaintext (convenience mode)
+        - name: dealId
+          in: query
+          required: true
+          schema:
+            type: string
+            pattern: "^0x[a-fA-F0-9]{64}$"
+          description: Deal ID for authorization check
+          example: "0x1234567890abcdef1234567890abcdef1234567890abcdef1234567890abcdef"
+        - name: X-Sui-Address
+          in: header
+          required: true
+          schema:
+            type: string
+            pattern: "^0x[a-fA-F0-9]{64}$"
+          description: Sui wallet address requesting download
+        - name: X-Sui-Signature
+          in: header
+          required: true
+          schema:
+            type: string
+          description: Signature proving ownership
+      responses:
+        "200":
+          description: File successfully downloaded
+          content:
+            application/octet-stream:
+              schema:
+                type: string
+                format: binary
+              examples:
+                client_encrypted:
+                  summary: Client-encrypted mode (ciphertext)
+                  value: "[Binary encrypted data from Walrus]"
+                server_encrypted:
+                  summary: Server-encrypted mode (plaintext)
+                  value: "[Binary plaintext file]"
+        "400":
+          description: Invalid request
+          content:
+            application/json:
+              schema:
+                $ref: "../schemas/errors.yaml#/components/schemas/ValidationError"
+              examples:
+                invalidBlobId:
+                  value:
+                    error: "ValidationError"
+                    message: "Invalid blob ID format"
+                    statusCode: 400
+                missingDealId:
+                  value:
+                    error: "ValidationError"
+                    message: "dealId query parameter is required"
+                    statusCode: 400
+        "401":
+          description: Unauthorized
+          content:
+            application/json:
+              schema:
+                $ref: "../schemas/errors.yaml#/components/schemas/UnauthorizedError"
+        "403":
+          description: Forbidden - User not authorized to access this blob
+          content:
+            application/json:
+              schema:
+                $ref: "../schemas/errors.yaml#/components/schemas/ForbiddenError"
+              example:
+                error: "ForbiddenError"
+                message: "User is not authorized to access this blob"
+                statusCode: 403
+                details:
+                  reason: "User is not a participant in deal 0x1234..."
+                  userAddress: "0xabcd..."
+                  dealId: "0x1234..."
+        "404":
+          description: Blob not found
+          content:
+            application/json:
+              schema:
+                $ref: "../schemas/errors.yaml#/components/schemas/NotFoundError"
+              example:
+                error: "NotFoundError"
+                message: "Blob not found on Walrus network"
+                statusCode: 404
+                details:
+                  blobId: "blob_2Nf8pQz3Xm7Yk5Rd9Wv1Bc6Lt4Hs"
+        "500":
+          description: Download or decryption failed
+          content:
+            application/json:
+              schema:
+                $ref: "../schemas/errors.yaml#/components/schemas/ErrorResponse"
+              examples:
+                walrusError:
+                  value:
+                    error: "WalrusDownloadError"
+                    message: "Failed to download blob from Walrus network"
+                    statusCode: 500
+                    details:
+                      reason: "Connection timeout to Walrus storage nodes"
+                decryptionError:
+                  value:
+                    error: "SealDecryptionError"
+                    message: "Failed to decrypt blob"
+                    statusCode: 500
+                    details:
+                      reason: "Could not fetch decryption keys from Seal Key Servers"

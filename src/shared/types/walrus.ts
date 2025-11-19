@@ -53,12 +53,27 @@ export interface WalrusUploadRequest {
 }
 
 /**
+ * Metadata provided for a new upload.
+ */
+export interface UploadMetadata {
+  filename: string;
+  mimeType: string;
+  description?: string;
+  dealId: string;
+  periodId: string;
+  uploaderAddress: string;
+  dataType: DataType;
+  customDataType?: string;
+}
+
+/**
  * Metadata stored with the Walrus blob
  */
 export interface BlobMetadata {
   filename: string;
   mimeType: string;
   description?: string;
+  dealId: string;
   periodId: string;
   encrypted: boolean;
   encryptionMode: EncryptionMode;

@@ -17,7 +17,11 @@
 import { config as dotenvConfig } from 'dotenv';
 dotenvConfig(); // Load .env file first
 
-import type { BlobMetadata } from '../src/shared/types/walrus';
+// Override environment variables to ensure correct URLs are used
+process.env.WALRUS_AGGREGATOR_URL = 'https://walrus-testnet.blockscope.net';
+process.env.WALRUS_PUBLISHER_URL = 'https://walrus-testnet.blockscope.net:11444';
+
+import type { UploadMetadata } from '../src/shared/types/walrus';
 
 // Test configuration
 const TEST_CONFIG = {
@@ -34,7 +38,7 @@ const TEST_CONFIG = {
     filename: 'test-data.txt',
     mimeType: 'text/plain',
     description: 'Test upload for WalrusService validation',
-  } satisfies BlobMetadata,
+  } satisfies UploadMetadata,
 };
 
 // Helper function to wait
@@ -144,7 +148,7 @@ async function main() {
     console.log('-'.repeat(60));
 
     const largerFileData = Buffer.from(TEST_CONFIG.largerFileContent);
-    const largerMetadata: BlobMetadata = {
+    const largerMetadata: UploadMetadata = {
       ...TEST_CONFIG.testMetadata,
       filename: 'larger-test-data.txt',
       description: 'Larger test file (10KB)',
@@ -192,39 +196,21 @@ async function main() {
     console.log('  Total (SUI):', (Number(costEstimate.totalCost) / 1_000_000_000).toFixed(6), 'SUI');
     console.log();
 
-    // Test 6: Download with Legacy Method (backward compatibility)
+    // Test 6: Error Handling - Non-existent Blob
     console.log('-'.repeat(60));
-    console.log('Test 6: Legacy Download Method (backward compatibility)');
-    console.log('-'.repeat(60));
-
-    const legacyDownload = await walrusService.download(uploadResult1.blobId);
-    const legacyMatch = legacyDownload.toString() === TEST_CONFIG.smallFileContent;
-
-    console.log('Legacy download:');
-    console.log('  Data size:', legacyDownload.length, 'bytes');
-    console.log('  Content match:', legacyMatch ? 'PASSED' : 'FAILED');
-
-    if (!legacyMatch) {
-      console.error('ERROR: Legacy download data does not match!');
-      process.exit(1);
-    }
-    console.log();
-
-    // Test 7: Error Handling - Non-existent Blob
-    console.log('-'.repeat(60));
-    console.log('Test 7: Error Handling - Non-existent Blob');
+    console.log('Test 6: Error Handling - Non-existent Blob');
     console.log('-'.repeat(60));
 
     const fakeBlobId = 'nonexistent_blob_id_12345';
     try {
-      await walrusService.download(fakeBlobId);
+      await walrusService.downloadWithMetadata(fakeBlobId);
       console.error('ERROR: Should have thrown error for non-existent blob!');
       process.exit(1);
     } catch (error) {
       const errorMessage = error instanceof Error ? error.message : String(error);
       const isExpectedError = errorMessage.includes('not found') ||
-                             errorMessage.includes('404') ||
-                             errorMessage.includes('failed');
+        errorMessage.includes('404') ||
+        errorMessage.includes('failed');
       console.log('Error correctly thrown for non-existent blob');
       console.log('  Error:', errorMessage.substring(0, 100));
       console.log('  Expected error type:', isExpectedError ? 'PASSED' : 'FAILED');
@@ -235,9 +221,9 @@ async function main() {
     }
     console.log();
 
-    // Test 8: Binary Data Upload
+    // Test 7: Binary Data Upload
     console.log('-'.repeat(60));
-    console.log('Test 8: Binary Data Upload');
+    console.log('Test 7: Binary Data Upload');
     console.log('-'.repeat(60));
 
     // Create binary data (simulating encrypted content)
@@ -246,7 +232,7 @@ async function main() {
       binaryData[i] = i;
     }
 
-    const binaryMetadata: BlobMetadata = {
+    const binaryMetadata: UploadMetadata = {
       ...TEST_CONFIG.testMetadata,
       filename: 'binary-data.bin',
       mimeType: 'application/octet-stream',

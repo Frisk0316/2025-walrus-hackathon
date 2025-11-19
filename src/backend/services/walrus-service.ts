@@ -10,6 +10,7 @@ import type {
   WalrusUploadResult,
   BlobInfo,
   BlobMetadata,
+  UploadMetadata,
   WalrusMetadataEnvelope,
   WalrusDownloadWithMetadataResult,
 } from '@/src/shared/types/walrus';
@@ -59,8 +60,8 @@ export class WalrusService {
   constructor() {
     // Use aggregator URL for both read and write
     // Publisher is typically at a different endpoint for writes
-    this.aggregatorUrl = config.walrus.aggregatorUrl || 'https://aggregator.walrus-testnet.walrus.space';
-    this.publisherUrl = config.walrus.publisherUrl || 'https://publisher.walrus-testnet.walrus.space';
+    this.aggregatorUrl = config.walrus.aggregatorUrl || 'https://walrus-testnet.blockscope.net';
+    this.publisherUrl = config.walrus.publisherUrl || 'https://walrus-testnet.blockscope.net:11444';
 
     if (debugConfig.walrus) {
       console.log('WalrusService initialized (HTTP API mode)');
@@ -82,7 +83,7 @@ export class WalrusService {
    * @param metadata - Blob metadata
    * @returns Upload result with blob ID and commitment
    */
-  async upload(data: Buffer, metadata: BlobMetadata): Promise<WalrusUploadResult> {
+  async upload(data: Buffer, metadata: UploadMetadata): Promise<WalrusUploadResult> {
     try {
       if (debugConfig.walrus) {
         console.log('Uploading to Walrus via HTTP API');
@@ -97,12 +98,20 @@ export class WalrusService {
         );
       }
 
+      // Create the full metadata object
+      const fullMetadata: BlobMetadata = {
+        ...metadata,
+        encrypted: false, // This would be determined by encryption logic
+        encryptionMode: 'client_encrypted', // This would be determined by encryption logic
+        uploadedAt: new Date().toISOString(),
+      };
+
       // Wrap data with metadata envelope
-      const envelopedData = this.wrapWithMetadataEnvelope(data, metadata);
+      const envelopedData = this.wrapWithMetadataEnvelope(data, fullMetadata);
 
       if (debugConfig.walrus) {
         console.log('Envelope size:', envelopedData.length, 'bytes');
-        console.log('Metadata included:', JSON.stringify(metadata).substring(0, 100) + '...');
+        console.log('Metadata included:', JSON.stringify(fullMetadata).substring(0, 100) + '...');
       }
 
       // Upload using Walrus Publisher HTTP API
@@ -165,58 +174,6 @@ export class WalrusService {
       console.error('Walrus upload failed:', error);
       throw new Error(
         `Failed to upload to Walrus: ${error instanceof Error ? error.message : 'Unknown error'}`
-      );
-    }
-  }
-
-  /**
-   * Download data from Walrus (raw, without metadata extraction)
-   *
-   * @param blobId - Blob ID to download
-   * @returns Downloaded data as Buffer (includes metadata envelope)
-   * @deprecated Use downloadWithMetadata instead
-   */
-  async download(blobId: string): Promise<Buffer> {
-    try {
-      if (debugConfig.walrus) {
-        console.log('Downloading from Walrus via HTTP API');
-        console.log('Blob ID:', blobId);
-      }
-
-      // Download using Walrus Aggregator HTTP API
-      // GET /v1/blobs/{blobId}
-      const url = `${this.aggregatorUrl}/v1/blobs/${blobId}`;
-
-      const response = await fetch(url);
-
-      if (!response.ok) {
-        if (response.status === 404) {
-          throw new Error(`Blob not found: ${blobId}`);
-        }
-        const errorText = await response.text();
-        throw new Error(`Walrus download failed: ${response.status} ${response.statusText} - ${errorText}`);
-      }
-
-      const arrayBuffer = await response.arrayBuffer();
-      const buffer = Buffer.from(arrayBuffer);
-
-      if (debugConfig.walrus) {
-        console.log('Download successful');
-        console.log('Data size:', buffer.length, 'bytes');
-      }
-
-      // Extract data from envelope (for backward compatibility)
-      try {
-        const result = this.unwrapMetadataEnvelope(buffer);
-        return result.data;
-      } catch {
-        // If envelope parsing fails, return raw data (legacy blob)
-        return buffer;
-      }
-    } catch (error) {
-      console.error('Walrus download failed:', error);
-      throw new Error(
-        `Failed to download from Walrus: ${error instanceof Error ? error.message : 'Unknown error'}`
       );
     }
   }

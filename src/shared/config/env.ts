@@ -88,7 +88,7 @@ export const walrusConfig = {
   /**
    * Walrus aggregator URL for uploads
    */
-  aggregatorUrl: getEnvVar('WALRUS_AGGREGATOR_URL', 'https://aggregator-testnet.walrus.space'),
+  aggregatorUrl: getEnvVar('WALRUS_AGGREGATOR_URL', 'https://walrus-testnet.blockscope.net'),
 
   /**
    * Walrus publisher URL (optional, uses aggregator if not set)

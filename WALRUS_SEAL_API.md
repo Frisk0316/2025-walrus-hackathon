@@ -275,9 +275,8 @@ npx tsx scripts/test-walrus-service.ts
 **Environment Variables Required:**
 
 ```bash
-# Optional (defaults to testnet)
-WALRUS_AGGREGATOR_URL="https://aggregator.walrus-testnet.walrus.space"
-WALRUS_PUBLISHER_URL="https://publisher.walrus-testnet.walrus.space"
+WALRUS_AGGREGATOR_URL="https://walrus-testnet.blockscope.net"
+WALRUS_PUBLISHER_URL="https://walrus-testnet.blockscope.net:11444"
 WALRUS_STORAGE_EPOCHS="1"
 
 # Optional for verbose logging
@@ -286,16 +285,15 @@ DEBUG_WALRUS="true"
 
 **Tests Covered:**
 
-| Test   | Description                                      | Status  |
-| ------ | ------------------------------------------------ | ------- |
-| Test 1 | Upload Small File (with metadata envelope)       | ✅ Pass |
-| Test 2 | Download and Verify Data Integrity               | ✅ Pass |
-| Test 3 | Get Blob Info (HEAD request)                     | ✅ Pass |
-| Test 4 | Upload Larger File (10KB)                        | ✅ Pass |
-| Test 5 | Calculate Storage Cost Estimation                | ✅ Pass |
-| Test 6 | Legacy Download Method (backward compatibility)  | ✅ Pass |
-| Test 7 | Error Handling - Non-existent Blob               | ✅ Pass |
-| Test 8 | Binary Data Upload and Verification              | ✅ Pass |
+| Test   | Description                                     | Status  |
+| ------ | ----------------------------------------------- | ------- |
+| Test 1 | Upload Small File (with metadata envelope)      | ✅ Pass |
+| Test 2 | Download and Verify Data Integrity              | ✅ Pass |
+| Test 3 | Get Blob Info (HEAD request)                    | ✅ Pass |
+| Test 4 | Upload Larger File (10KB)                       | ✅ Pass |
+| Test 5 | Calculate Storage Cost Estimation               | ✅ Pass |
+| Test 6 | Error Handling - Non-existent Blob              | ✅ Pass |
+| Test 7 | Binary Data Upload and Verification             | ✅ Pass |
 
 **Expected Output:**
 
@@ -339,22 +337,25 @@ Uploaded blobs (for reference):
 **Debugging Tips:**
 
 1. **Enable verbose logging:**
+
    ```bash
    DEBUG_WALRUS=true npx tsx scripts/test-walrus-service.ts
    ```
 
 2. **Check Walrus network status:**
+
    - Visit https://status.walrus-testnet.walrus.space (if available)
    - Try the aggregator URL directly in browser
 
 3. **Common issues:**
+
    - `Walrus upload failed: 5XX` - Walrus network may be overloaded, retry later
    - `Blob not found` - Wait longer for blob propagation (increase sleep time)
    - `Invalid envelope` - Data format issue, check if uploading raw vs enveloped data
 
 4. **Verify uploaded blob manually:**
    ```bash
-   curl "https://aggregator.walrus-testnet.walrus.space/v1/blobs/{blobId}" --output downloaded.bin
+   curl "https://walrus-testnet.blockscope.net/v1/blobs/{blobId}" --output downloaded.bin
    ```
 
 ---
@@ -663,8 +664,8 @@ SUI_RPC_URL="https://fullnode.testnet.sui.io:443"
 SUI_BACKEND_PRIVATE_KEY="base64_encoded_key"  # Required for server_encrypted mode
 
 # Walrus Configuration (HTTP API mode)
-WALRUS_AGGREGATOR_URL="https://aggregator.walrus-testnet.walrus.space"
-WALRUS_PUBLISHER_URL="https://publisher.walrus-testnet.walrus.space"
+WALRUS_AGGREGATOR_URL="https://walrus-testnet.blockscope.net"
+WALRUS_PUBLISHER_URL="https://walrus-testnet.blockscope.net:11444"
 WALRUS_STORAGE_EPOCHS="1"
 WALRUS_MAX_FILE_SIZE="104857600"  # 100MB
 

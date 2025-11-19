@@ -79,3 +79,6 @@ node_modules/
 # tasks.json
 # tasks/ 
 *.todo
+
+# Sui Contracts
+/contracts/build/

@@ -262,6 +262,103 @@ describe("Walrus Upload API", () => {
 });
 ```
 
+### WalrusService Tests ✅
+
+A comprehensive test script is available for testing WalrusService storage operations:
+
+**Usage:**
+
+```bash
+npx tsx scripts/test-walrus-service.ts
+```
+
+**Environment Variables Required:**
+
+```bash
+# Optional (defaults to testnet)
+WALRUS_AGGREGATOR_URL="https://aggregator.walrus-testnet.walrus.space"
+WALRUS_PUBLISHER_URL="https://publisher.walrus-testnet.walrus.space"
+WALRUS_STORAGE_EPOCHS="1"
+
+# Optional for verbose logging
+DEBUG_WALRUS="true"
+```
+
+**Tests Covered:**
+
+| Test   | Description                                      | Status  |
+| ------ | ------------------------------------------------ | ------- |
+| Test 1 | Upload Small File (with metadata envelope)       | ✅ Pass |
+| Test 2 | Download and Verify Data Integrity               | ✅ Pass |
+| Test 3 | Get Blob Info (HEAD request)                     | ✅ Pass |
+| Test 4 | Upload Larger File (10KB)                        | ✅ Pass |
+| Test 5 | Calculate Storage Cost Estimation                | ✅ Pass |
+| Test 6 | Legacy Download Method (backward compatibility)  | ✅ Pass |
+| Test 7 | Error Handling - Non-existent Blob               | ✅ Pass |
+| Test 8 | Binary Data Upload and Verification              | ✅ Pass |
+
+**Expected Output:**
+
+```
+============================================================
+WalrusService Test Script
+============================================================
+
+WalrusService initialized
+
+------------------------------------------------------------
+Test 1: Upload Small File
+------------------------------------------------------------
+File content: Hello, Walrus! This is a test file.
+Data size: 35 bytes
+Upload successful!
+  Blob ID: ABC123...
+  Commitment: 0x...
+  Size: 35 bytes
+  ...
+
+------------------------------------------------------------
+Test 2: Download and Verify Data
+------------------------------------------------------------
+Download successful!
+  Data integrity check: PASSED
+  Metadata integrity check: PASSED
+  ...
+
+============================================================
+Test Summary
+============================================================
+All tests completed successfully!
+
+Uploaded blobs (for reference):
+  1. ABC123...
+  2. DEF456...
+  3. GHI789...
+```
+
+**Debugging Tips:**
+
+1. **Enable verbose logging:**
+   ```bash
+   DEBUG_WALRUS=true npx tsx scripts/test-walrus-service.ts
+   ```
+
+2. **Check Walrus network status:**
+   - Visit https://status.walrus-testnet.walrus.space (if available)
+   - Try the aggregator URL directly in browser
+
+3. **Common issues:**
+   - `Walrus upload failed: 5XX` - Walrus network may be overloaded, retry later
+   - `Blob not found` - Wait longer for blob propagation (increase sleep time)
+   - `Invalid envelope` - Data format issue, check if uploading raw vs enveloped data
+
+4. **Verify uploaded blob manually:**
+   ```bash
+   curl "https://aggregator.walrus-testnet.walrus.space/v1/blobs/{blobId}" --output downloaded.bin
+   ```
+
+---
+
 ### SealService Whitelist Tests ✅
 
 A comprehensive test script is available for testing SealService whitelist operations:

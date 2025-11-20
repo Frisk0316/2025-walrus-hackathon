@@ -146,6 +146,8 @@ components:
         items:
           type: array
           description: Array of result items
+          items:
+            type: object
         total:
           type: integer
           description: Total number of items available

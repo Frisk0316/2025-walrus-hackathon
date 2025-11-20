@@ -41,7 +41,10 @@ export class OpenAPIService {
         },
       };
 
-      return openapiSpec;
+      // Resolve all relative $ref paths to absolute paths
+      const resolvedSpec = this.resolveRefs(openapiSpec);
+
+      return resolvedSpec;
     } catch (error) {
       console.error('Error generating OpenAPI spec:', error);
       throw new Error(
@@ -186,6 +189,58 @@ export class OpenAPIService {
     }
 
     return schemas;
+  }
+
+  /**
+   * Resolve all relative $ref paths to absolute paths
+   * Converts refs like "./schemas/period.yaml#/components/schemas/Period"
+   * to "#/components/schemas/Period"
+   */
+  private resolveRefs(obj: any): any {
+    if (obj === null || typeof obj !== 'object') {
+      return obj;
+    }
+
+    if (Array.isArray(obj)) {
+      return obj.map((item) => this.resolveRefs(item));
+    }
+
+    const resolved: any = {};
+    for (const key in obj) {
+      if (key === '$ref' && typeof obj[key] === 'string') {
+        // Resolve relative $ref to absolute path
+        resolved[key] = this.resolveRefPath(obj[key]);
+      } else {
+        resolved[key] = this.resolveRefs(obj[key]);
+      }
+    }
+
+    return resolved;
+  }
+
+  /**
+   * Convert relative $ref path to absolute path
+   * Examples:
+   *   "./period.yaml#/components/schemas/Period" -> "#/components/schemas/Period"
+   *   "../schemas/errors.yaml#/components/schemas/ErrorResponse" -> "#/components/schemas/ErrorResponse"
+   *   "#/components/schemas/Deal" -> "#/components/schemas/Deal" (unchanged)
+   */
+  private resolveRefPath(ref: string): string {
+    // If already an absolute path (starts with #), return as-is
+    if (ref.startsWith('#')) {
+      return ref;
+    }
+
+    // Extract the fragment part after # (e.g., "/components/schemas/Period")
+    const hashIndex = ref.indexOf('#');
+    if (hashIndex === -1) {
+      // No fragment, cannot resolve
+      console.warn(`Warning: Cannot resolve $ref without fragment: ${ref}`);
+      return ref;
+    }
+
+    const fragment = ref.substring(hashIndex);
+    return fragment;
   }
 }
 

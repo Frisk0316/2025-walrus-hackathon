@@ -422,53 +422,16 @@ export class WalrusController {
       const blobMetadata = downloadResult.metadata;
 
       // Process based on decryption mode
-      let dataToReturn: Buffer;
+      // Both modes return ciphertext for frontend decryption
+      // The difference is in upload: client_encrypted = frontend encrypts, server_encrypted = backend encrypts
+      const dataToReturn: Buffer = encryptedData;
 
       if (mode === 'server_encrypted') {
-        // Server-side decryption mode
-        if (!config.app.enableServerEncryption) {
-          return NextResponse.json(
-            {
-              error: 'ForbiddenError',
-              message: 'Server-side decryption is disabled',
-              statusCode: 403,
-            },
-            { status: 403 }
-          );
-        }
-
-        // Validate required config
-        if (!config.seal.packageId) {
-          return NextResponse.json(
-            {
-              error: 'ConfigurationError',
-              message: 'Seal configuration is incomplete',
-              statusCode: 500,
-              details: {
-                reason: 'SEAL_PACKAGE_ID must be set for server-side decryption',
-              },
-            },
-            { status: 500 }
-          );
-        }
-
-        // Decrypt file using Seal with whitelist-based access control
-        const decryptionResult = await sealService.decrypt(
-          encryptedData,
-          whitelistObjectId,
-          config.seal.packageId,
-          userAddress
-        );
-        dataToReturn = decryptionResult.plaintext;
-
-        console.log('Server-side decryption completed');
-        console.log('Encrypted size:', encryptedData.length, 'bytes');
-        console.log('Decrypted size:', dataToReturn.length, 'bytes');
+        console.log('Returning encrypted data (server-encrypted during upload, client decrypts on download)');
+        console.log('Ciphertext size:', dataToReturn.length, 'bytes');
       } else {
-        // Client-side decryption mode (default)
-        // Return encrypted data for frontend to decrypt
-        dataToReturn = encryptedData;
-        console.log('Returning encrypted data for client-side decryption');
+        // Client-side encryption mode (default)
+        console.log('Returning encrypted data (client-encrypted during upload, client decrypts on download)');
         console.log('Ciphertext size:', dataToReturn.length, 'bytes');
       }
 
@@ -477,12 +440,20 @@ export class WalrusController {
         'Content-Type': blobMetadata.mimeType || 'application/octet-stream',
         'Content-Length': dataToReturn.length.toString(),
         'X-Blob-Id': blobId,
-        'X-Encryption-Mode': mode,
+        'X-Encryption-Mode': mode, // Current decryption mode
+        'X-Original-Encryption-Mode': blobMetadata.encryptionMode, // Original encryption mode
         'X-Data-Type': blobMetadata.dataType,
         'X-Period-Id': blobMetadata.periodId,
         'X-Uploaded-At': blobMetadata.uploadedAt,
         'X-Uploader-Address': blobMetadata.uploaderAddress,
       };
+
+      // Add Seal policy information for client-side decryption (both modes)
+      // Both modes require frontend to decrypt, so always provide Seal policy headers
+      if (config.seal.packageId) {
+        headers['X-Seal-Package-Id'] = config.seal.packageId;
+        headers['X-Seal-Whitelist-Id'] = whitelistObjectId; // dealId
+      }
 
       // Add filename header if available
       if (blobMetadata.filename) {

@@ -32,11 +32,22 @@ paths:
           schema:
             type: string
             pattern: '^0x[a-fA-F0-9]{64}$'
+          description: Sui wallet address of the requester
         - name: X-Sui-Signature
           in: header
           required: true
           schema:
             type: string
+          description: Base64-encoded signature of the timestamp message
+        - name: X-Sui-Signature-Message
+          in: header
+          required: true
+          schema:
+            type: string
+            format: date-time
+          description: |
+            ISO timestamp that was signed (e.g., "2025-11-20T10:30:45.123Z").
+            Must be within 5 minutes of current time to prevent replay attacks.
         - name: dealId
           in: path
           required: true

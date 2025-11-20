@@ -22,10 +22,10 @@ This document details the implementation locations, testing methods, frontend in
 
 The system supports two encryption modes:
 
-| Mode               | Description                                           | Security                        | Frontend Complexity |
-| ------------------ | ----------------------------------------------------- | ------------------------------- | ------------------- |
-| `client_encrypted` | Frontend encrypts using Seal SDK, backend only relays | High (zero-knowledge)           | High                |
-| `server_encrypted` | Backend encrypts/decrypts using Seal SDK              | Medium (requires backend trust) | Low                 |
+| Mode               | Description                                                      | Security                                    | Frontend Complexity |
+| ------------------ | ---------------------------------------------------------------- | ------------------------------------------- | ------------------- |
+| `client_encrypted` | Frontend encrypts during upload, frontend decrypts on download   | High (zero-knowledge, backend never sees plaintext) | High                |
+| `server_encrypted` | Backend encrypts during upload, frontend decrypts on download    | Medium (backend sees plaintext only during upload)  | Medium              |
 
 ### Endpoint List
 
@@ -167,6 +167,9 @@ Content-Length: 1024
 Content-Disposition: attachment; filename*=UTF-8''Q4-2024-revenue.xlsx
 X-Blob-Id: ABC123...
 X-Encryption-Mode: client_encrypted
+X-Original-Encryption-Mode: client_encrypted
+X-Seal-Package-Id: 0x8a211625...
+X-Seal-Whitelist-Id: 0x1234...abcd
 X-Filename: Q4-2024-revenue.xlsx
 X-Data-Type: revenue_journal
 X-Period-Id: period-2024-q4
@@ -175,22 +178,26 @@ X-Uploader-Address: 0x1234...abcd
 X-Description: Q4 2024 revenue journal (optional)
 X-Custom-Data-Type: inventory_report (optional, when dataType is "custom")
 
-[Binary data]
+[Binary encrypted data - requires frontend Seal SDK to decrypt]
 ```
 
 **Metadata Headers:**
 
-| Header              | Description                       | Always Present |
-| ------------------- | --------------------------------- | -------------- |
-| Content-Type        | Original file MIME type           | Yes            |
-| Content-Disposition | Attachment with original filename | If filename    |
-| X-Filename          | Original filename                 | If filename    |
-| X-Data-Type         | Data type (revenue_journal, etc.) | Yes            |
-| X-Period-Id         | Period identifier                 | Yes            |
-| X-Uploaded-At       | Upload timestamp (ISO 8601)       | Yes            |
-| X-Uploader-Address  | Sui address of uploader           | Yes            |
-| X-Description       | File description                  | Optional       |
-| X-Custom-Data-Type  | Custom data type name             | Optional       |
+| Header                     | Description                            | Always Present |
+| -------------------------- | -------------------------------------- | -------------- |
+| Content-Type               | Original file MIME type                | Yes            |
+| Content-Disposition        | Attachment with original filename      | If filename    |
+| X-Filename                 | Original filename                      | If filename    |
+| X-Data-Type                | Data type (revenue_journal, etc.)      | Yes            |
+| X-Period-Id                | Period identifier                      | Yes            |
+| X-Uploaded-At              | Upload timestamp (ISO 8601)            | Yes            |
+| X-Uploader-Address         | Sui address of uploader                | Yes            |
+| X-Encryption-Mode          | Current decryption mode (request mode) | Yes            |
+| X-Original-Encryption-Mode | Original encryption mode (from upload) | Yes            |
+| X-Seal-Package-Id          | Seal package ID for decryption         | Yes (both modes) |
+| X-Seal-Whitelist-Id        | Whitelist object ID for seal_approve   | Yes (both modes) |
+| X-Description              | File description                       | Optional       |
+| X-Custom-Data-Type         | Custom data type name                  | Optional       |
 
 **Error Responses:**
 
@@ -218,10 +225,14 @@ curl http://localhost:3000/api/v1/health
 # Create test file
 echo "Test encrypted data" > /tmp/test.txt
 
-# Upload
+# Generate timestamp for signature
+TIMESTAMP=$(date -u +"%Y-%m-%dT%H:%M:%S.000Z")
+
+# Upload (note: you need to sign the timestamp with your wallet)
 curl -X POST "http://localhost:3000/api/v1/walrus/upload?mode=client_encrypted" \
   -H "X-Sui-Address: 0x1234..." \
   -H "X-Sui-Signature: test_sig" \
+  -H "X-Sui-Signature-Message: $TIMESTAMP" \
   -F "file=@/tmp/test.txt" \
   -F "dealId=0xdeal123" \
   -F "periodId=period1" \
@@ -232,9 +243,13 @@ curl -X POST "http://localhost:3000/api/v1/walrus/upload?mode=client_encrypted" 
 **3. Download File:**
 
 ```bash
+# Generate timestamp for signature
+TIMESTAMP=$(date -u +"%Y-%m-%dT%H:%M:%S.000Z")
+
 curl "http://localhost:3000/api/v1/walrus/download/{blobId}?mode=client_encrypted&dealId=0xdeal123" \
   -H "X-Sui-Address: 0x1234..." \
   -H "X-Sui-Signature: test_sig" \
+  -H "X-Sui-Signature-Message: $TIMESTAMP" \
   --output downloaded.bin
 ```
 
@@ -285,14 +300,14 @@ DEBUG_WALRUS="true"
 
 **Tests Covered:**
 
-| Test   | Description                                     | Status  |
-| ------ | ----------------------------------------------- | ------- |
-| Test 1 | Upload Small File (with metadata envelope)      | ✅ Pass |
-| Test 2 | Download and Verify Data Integrity              | ✅ Pass |
-| Test 3 | Get Blob Info (HEAD request)                    | ✅ Pass |
-| Test 4 | Upload Larger File (10KB)                       | ✅ Pass |
-| Test 6 | Error Handling - Non-existent Blob              | ✅ Pass |
-| Test 7 | Binary Data Upload and Verification             | ✅ Pass |
+| Test   | Description                                | Status  |
+| ------ | ------------------------------------------ | ------- |
+| Test 1 | Upload Small File (with metadata envelope) | ✅ Pass |
+| Test 2 | Download and Verify Data Integrity         | ✅ Pass |
+| Test 3 | Get Blob Info (HEAD request)               | ✅ Pass |
+| Test 4 | Upload Larger File (10KB)                  | ✅ Pass |
+| Test 6 | Error Handling - Non-existent Blob         | ✅ Pass |
+| Test 7 | Binary Data Upload and Verification        | ✅ Pass |
 
 **Expected Output:**
 
@@ -602,7 +617,9 @@ async function downloadAndDecrypt(
 }
 ```
 
-### Server-Encrypted Mode (Simplified)
+### Server-Encrypted Mode (Simplified Upload)
+
+**Key Point**: Both modes now return ciphertext for frontend decryption. The difference is only in who encrypts during upload.
 
 ```typescript
 // Upload (backend encrypts)
@@ -615,7 +632,7 @@ async function uploadPlaintext(
   const authHeaders = await createAuthHeaders(userAddress);
 
   const formData = new FormData();
-  formData.append("file", file); // plaintext
+  formData.append("file", file); // plaintext - backend will encrypt
   formData.append("dealId", dealId);
   formData.append("periodId", periodId);
   formData.append("dataType", "revenue_journal");
@@ -629,14 +646,16 @@ async function uploadPlaintext(
   return response.json();
 }
 
-// Download (backend decrypts)
-async function downloadPlaintext(
+// Download (frontend decrypts - same as client_encrypted mode)
+async function downloadAndDecrypt(
   blobId: string,
   dealId: string,
-  userAddress: string
+  userAddress: string,
+  sealClient: SealClient
 ) {
   const authHeaders = await createAuthHeaders(userAddress);
 
+  // 1. Download ciphertext
   const response = await fetch(
     `/api/v1/walrus/download/${blobId}?mode=server_encrypted&dealId=${dealId}`,
     {
@@ -644,9 +663,28 @@ async function downloadPlaintext(
     }
   );
 
-  return response.blob(); // decrypted plaintext
+  const ciphertext = new Uint8Array(await response.arrayBuffer());
+
+  // 2. Extract Seal policy info from response headers
+  const packageId = response.headers.get("X-Seal-Package-Id");
+  const whitelistId = response.headers.get("X-Seal-Whitelist-Id");
+
+  // 3. Decrypt using Seal SDK (same as client_encrypted mode)
+  // ... (see Client-Encrypted Mode download flow for full implementation)
+
+  return plaintext;
 }
 ```
+
+**When to Use `server_encrypted` Mode:**
+
+- ✅ Simplifying initial MVP development (skip frontend Seal integration for uploads)
+- ✅ Mobile apps where Seal SDK integration is challenging
+- ✅ Rapid prototyping where upload simplicity is prioritized
+- ❌ High-security scenarios requiring zero-knowledge uploads
+- ❌ When backend trust is not acceptable during upload phase
+
+**Note**: The download flow for `server_encrypted` mode is identical to `client_encrypted` mode - both require frontend Seal SDK integration for decryption.
 
 ---
 

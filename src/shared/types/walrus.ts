@@ -286,6 +286,17 @@ export interface DealBlobItem {
   metadata: BlobMetadata;
   /** Relative URL to download this blob */
   downloadUrl: string;
+  /** Audit status information */
+  auditStatus?: {
+    /** Whether this blob has been audited */
+    audited: boolean;
+    /** Auditor address (if audited) */
+    auditor?: string;
+    /** Audit timestamp in ms (if audited) */
+    auditTimestamp?: number;
+    /** Audit record object ID on Sui */
+    auditRecordId?: string;
+  };
 }
 
 /**

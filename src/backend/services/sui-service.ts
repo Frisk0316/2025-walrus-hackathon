@@ -5,6 +5,8 @@
  */
 
 import { getFullnodeUrl, SuiClient } from '@mysten/sui/client';
+import { Transaction } from '@mysten/sui/transactions';
+import { toHex } from '@mysten/sui/utils';
 import { config, debugConfig } from '@/src/shared/config/env';
 
 /**
@@ -426,6 +428,277 @@ export class SuiService {
       console.error('Failed to verify deal participant:', error);
       // Return false on error for security
       return false;
+    }
+  }
+
+  /**
+   * Build unsigned transaction for creating a new deal
+   *
+   * Creates a Deal object on-chain with:
+   * - Deal name
+   * - Buyer (sender), Seller, and Auditor addresses
+   * - Associated Whitelist for Seal encryption access control
+   *
+   * @param name - Deal name
+   * @param sellerAddress - Seller's Sui address
+   * @param auditorAddress - Auditor's Sui address
+   * @param buyerAddress - Buyer's Sui address (transaction sender)
+   * @returns Object with hex-encoded transaction bytes and estimated gas
+   */
+  async buildCreateDealTransaction(
+    name: string,
+    sellerAddress: string,
+    auditorAddress: string,
+    buyerAddress: string
+  ): Promise<{ txBytes: string; estimatedGas: number }> {
+    try {
+      if (!config.earnout.packageId) {
+        throw new Error('EARNOUT_PACKAGE_ID not configured');
+      }
+
+      if (debugConfig.sui) {
+        console.log('Building create_deal transaction');
+        console.log('Package ID:', config.earnout.packageId);
+        console.log('Name:', name);
+        console.log('Buyer:', buyerAddress);
+        console.log('Seller:', sellerAddress);
+        console.log('Auditor:', auditorAddress);
+      }
+
+      const tx = new Transaction();
+
+      // Call earnout::create_deal
+      // Function signature from Move:
+      // public fun create_deal(
+      //   name: String,
+      //   seller: address,
+      //   auditor: address,
+      //   ctx: &mut TxContext
+      // )
+      tx.moveCall({
+        target: `${config.earnout.packageId}::earnout::create_deal`,
+        arguments: [
+          tx.pure.string(name),
+          tx.pure.address(sellerAddress),
+          tx.pure.address(auditorAddress),
+        ],
+      });
+
+      // Set sender for gas estimation
+      tx.setSender(buyerAddress);
+
+      // Build transaction bytes
+      const txBytes = await tx.build({ client: this.client });
+
+      // Estimate gas (approximate based on typical create_deal costs)
+      const estimatedGas = 10_000_000; // 0.01 SUI
+
+      if (debugConfig.sui) {
+        console.log('Transaction built successfully');
+        console.log('Estimated gas:', estimatedGas);
+      }
+
+      return {
+        txBytes: toHex(txBytes),
+        estimatedGas,
+      };
+    } catch (error) {
+      console.error('Failed to build create_deal transaction:', error);
+      throw new Error(
+        `Failed to build transaction: ${error instanceof Error ? error.message : 'Unknown error'}`
+      );
+    }
+  }
+
+  /**
+   * Query a deal object by ID
+   *
+   * @param dealId - Deal object ID on Sui
+   * @returns Deal object data or null if not found
+   */
+  async getDeal(dealId: string): Promise<{
+    id: string;
+    name: string;
+    buyer: string;
+    seller: string;
+    auditor: string;
+    parametersLocked: boolean;
+    whitelistId: string;
+    periods: unknown[];
+  } | null> {
+    try {
+      if (debugConfig.sui) {
+        console.log('Querying deal:', dealId);
+      }
+
+      const dealObject = await this.client.getObject({
+        id: dealId,
+        options: {
+          showContent: true,
+          showType: true,
+        },
+      });
+
+      if (!dealObject.data) {
+        return null;
+      }
+
+      const content = dealObject.data.content;
+      if (!content || content.dataType !== 'moveObject') {
+        return null;
+      }
+
+      const fields = content.fields as Record<string, unknown>;
+
+      return {
+        id: dealId,
+        name: fields.name as string || '',
+        buyer: fields.buyer as string || '',
+        seller: fields.seller as string || '',
+        auditor: fields.auditor as string || '',
+        parametersLocked: fields.parameters_locked as boolean || false,
+        whitelistId: (fields.whitelist_id as string) || '',
+        periods: (fields.periods as unknown[]) || [],
+      };
+    } catch (error) {
+      console.error('Failed to query deal:', error);
+      return null;
+    }
+  }
+
+  /**
+   * Get all deals where user is buyer, seller, or auditor
+   *
+   * Strategy:
+   * 1. Query DealCreated events to get all deal IDs
+   * 2. Fetch each Deal object
+   * 3. Filter by user's role
+   *
+   * @param userAddress - User's Sui address
+   * @param roleFilter - Optional filter by specific role
+   * @returns Array of deals with user's role
+   */
+  async getUserDeals(
+    userAddress: string,
+    roleFilter?: 'buyer' | 'seller' | 'auditor'
+  ): Promise<Array<{
+    dealId: string;
+    name: string;
+    buyer: string;
+    seller: string;
+    auditor: string;
+    userRole: 'buyer' | 'seller' | 'auditor';
+    status: 'draft' | 'active' | 'completed';
+    parametersLocked: boolean;
+    whitelistId: string;
+    periodCount: number;
+    createdAt?: string;
+  }>> {
+    try {
+      if (debugConfig.sui) {
+        console.log('Querying deals for user:', userAddress);
+      }
+
+      // Check if earnout package is configured
+      if (!config.earnout.packageId) {
+        console.warn('EARNOUT_PACKAGE_ID not configured, cannot query deals');
+        return [];
+      }
+
+      // Query DealCreated events to find all deals
+      const events = await this.client.queryEvents({
+        query: {
+          MoveEventType: `${config.earnout.packageId}::earnout::DealCreated`,
+        },
+        limit: 1000,
+      });
+
+      if (debugConfig.sui) {
+        console.log(`Found ${events.data.length} DealCreated events`);
+      }
+
+      // Extract unique deal IDs
+      const dealIds = new Set<string>();
+      for (const event of events.data) {
+        const parsedJson = event.parsedJson as { deal_id?: string };
+        if (parsedJson.deal_id) {
+          dealIds.add(parsedJson.deal_id);
+        }
+      }
+
+      // Fetch each deal and filter by user role
+      const userDeals: Array<{
+        dealId: string;
+        name: string;
+        buyer: string;
+        seller: string;
+        auditor: string;
+        userRole: 'buyer' | 'seller' | 'auditor';
+        status: 'draft' | 'active' | 'completed';
+        parametersLocked: boolean;
+        whitelistId: string;
+        periodCount: number;
+        createdAt?: string;
+      }> = [];
+
+      for (const dealId of dealIds) {
+        try {
+          const deal = await this.getDeal(dealId);
+          if (!deal) continue;
+
+          // Determine user's role in this deal
+          let userRole: 'buyer' | 'seller' | 'auditor' | null = null;
+          if (deal.buyer === userAddress) {
+            userRole = 'buyer';
+          } else if (deal.seller === userAddress) {
+            userRole = 'seller';
+          } else if (deal.auditor === userAddress) {
+            userRole = 'auditor';
+          }
+
+          // Skip if user is not a participant
+          if (!userRole) continue;
+
+          // Apply role filter if specified
+          if (roleFilter && userRole !== roleFilter) continue;
+
+          // Determine deal status
+          let status: 'draft' | 'active' | 'completed' = 'draft';
+          if (deal.parametersLocked) {
+            // Check if all periods are settled
+            const periods = deal.periods as Array<{ is_settled?: boolean }>;
+            const allSettled = periods.length > 0 && periods.every(p => p.is_settled);
+            status = allSettled ? 'completed' : 'active';
+          }
+
+          userDeals.push({
+            dealId: deal.id,
+            name: deal.name,
+            buyer: deal.buyer,
+            seller: deal.seller,
+            auditor: deal.auditor,
+            userRole,
+            status,
+            parametersLocked: deal.parametersLocked,
+            whitelistId: deal.whitelistId,
+            periodCount: (deal.periods as unknown[]).length,
+          });
+        } catch (error) {
+          console.error(`Failed to fetch deal ${dealId}:`, error);
+          continue;
+        }
+      }
+
+      if (debugConfig.sui) {
+        console.log(`Found ${userDeals.length} deals for user ${userAddress}`);
+      }
+
+      return userDeals;
+    } catch (error) {
+      console.error('Failed to query user deals:', error);
+      throw new Error(
+        `Failed to query deals: ${error instanceof Error ? error.message : 'Unknown error'}`
+      );
     }
   }
 }

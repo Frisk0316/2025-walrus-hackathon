@@ -11,9 +11,9 @@ import type { BlobReference, DataType } from '@/src/shared/types/walrus';
  */
 export async function GET(
   request: NextRequest,
-  { params }: { params: { dealId: string } }
+  { params }: { params: Promise<{ dealId: string }> }
 ) {
-  const { dealId } = params;
+  const { dealId } = await params;
 
   try {
     // Get all on-chain blob references

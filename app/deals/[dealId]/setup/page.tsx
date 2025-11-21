@@ -1,8 +1,9 @@
 'use client';
 
-import { useState } from 'react';
+import { useState, useCallback, useRef } from 'react';
 import { useParams, useRouter } from 'next/navigation';
-import { useCurrentAccount } from '@mysten/dapp-kit';
+import { useCurrentAccount, useSignPersonalMessage, useSignAndExecuteTransaction } from '@mysten/dapp-kit';
+import { Transaction } from '@mysten/sui/transactions';
 import { useForm, useFieldArray } from 'react-hook-form';
 import { zodResolver } from '@hookform/resolvers/zod';
 import * as z from 'zod';
@@ -53,6 +54,14 @@ const setupSchema = z.object({
 
 type SetupFormData = z.infer<typeof setupSchema>;
 
+// Signature cache
+interface SignatureCache {
+  signature: string;
+  message: string;
+  timestamp: number;
+}
+const SIGNATURE_CACHE_DURATION = 4 * 60 * 1000;
+
 export default function ParameterSetupPage() {
   const params = useParams();
   const router = useRouter();
@@ -60,6 +69,38 @@ export default function ParameterSetupPage() {
   const dealId = params.dealId as string;
   const { data: dashboard, isLoading } = useDashboard(dealId);
   const [isSubmitting, setIsSubmitting] = useState(false);
+  const { mutateAsync: signPersonalMessage } = useSignPersonalMessage();
+  const { mutateAsync: signAndExecuteTransaction } = useSignAndExecuteTransaction();
+  const signatureCacheRef = useRef<SignatureCache | null>(null);
+
+  const getAuthHeaders = useCallback(async (): Promise<Record<string, string> | null> => {
+    if (!currentAccount?.address) return null;
+
+    const cache = signatureCacheRef.current;
+    const now = Date.now();
+    if (cache && now - cache.timestamp < SIGNATURE_CACHE_DURATION) {
+      return {
+        'X-Sui-Address': currentAccount.address,
+        'X-Sui-Signature': cache.signature,
+        'X-Sui-Signature-Message': cache.message,
+      };
+    }
+
+    const timestamp = new Date().toISOString();
+    const messageBytes = new TextEncoder().encode(timestamp);
+
+    try {
+      const { signature } = await signPersonalMessage({ message: messageBytes });
+      signatureCacheRef.current = { signature, message: timestamp, timestamp: now };
+      return {
+        'X-Sui-Address': currentAccount.address,
+        'X-Sui-Signature': signature,
+        'X-Sui-Signature-Message': timestamp,
+      };
+    } catch {
+      return null;
+    }
+  }, [currentAccount?.address, signPersonalMessage]);
 
   const form = useForm<SetupFormData>({
     resolver: zodResolver(setupSchema),
@@ -93,25 +134,64 @@ export default function ParameterSetupPage() {
   const onSubmit = async (data: SetupFormData) => {
     setIsSubmitting(true);
     try {
-      // Convert string dates to Date objects
+      // Get auth headers
+      const authHeaders = await getAuthHeaders();
+      if (!authHeaders) {
+        toast.error('Please sign in with your wallet first.');
+        return;
+      }
+
+      // Convert form data to API format
       const payload = {
-        periods: data.periods.map((period) => ({
-          ...period,
-          startDate: new Date(period.startDate),
-          endDate: new Date(period.endDate),
+        periods: data.periods.map((period, index) => ({
+          id: period.name.replace(/\s+/g, '_').toLowerCase() || `period_${index + 1}`,
+          name: period.name,
+          threshold: period.kpiTypes[0]?.threshold || 0,
+          maxPayout: period.formula.maxPayout,
         })),
       };
 
       console.log('Setting parameters:', payload);
 
-      // TODO: Call API to set parameters
-      // await setParameters(dealId, payload);
+      // Call API to get transaction bytes
+      const response = await fetch(`/api/v1/deals/${dealId}/parameters`, {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+          ...authHeaders,
+        },
+        body: JSON.stringify(payload),
+      });
 
-      toast.success('Parameters saved successfully!');
-      router.push(`/deals/${dealId}`);
+      if (!response.ok) {
+        const errorData = await response.json().catch(() => ({}));
+        throw new Error(errorData.message || 'Failed to build transaction');
+      }
+
+      const result = await response.json();
+
+      // Sign and execute transaction
+      toast.info('Please sign the transaction in your wallet...');
+
+      const txBytes = result.transaction.txBytes;
+      const tx = Transaction.from(txBytes);
+
+      await signAndExecuteTransaction(
+        { transaction: tx },
+        {
+          onSuccess: () => {
+            toast.success('Parameters saved successfully! Deal is now active.');
+            router.push(`/deals/${dealId}`);
+          },
+          onError: (error) => {
+            console.error('Transaction failed:', error);
+            toast.error('Transaction failed. Please try again.');
+          },
+        }
+      );
     } catch (error) {
       console.error('Failed to save parameters:', error);
-      toast.error('Failed to save parameters. Please try again.');
+      toast.error(error instanceof Error ? error.message : 'Failed to save parameters. Please try again.');
     } finally {
       setIsSubmitting(false);
     }

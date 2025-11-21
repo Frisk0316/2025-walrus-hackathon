@@ -620,10 +620,19 @@ export class SuiService {
       // Extract unique deal IDs
       const dealIds = new Set<string>();
       for (const event of events.data) {
-        const parsedJson = event.parsedJson as { deal_id?: string };
-        if (parsedJson.deal_id) {
-          dealIds.add(parsedJson.deal_id);
+        const parsedJson = event.parsedJson as Record<string, unknown>;
+        if (debugConfig.sui) {
+          console.log('DealCreated event parsedJson:', JSON.stringify(parsedJson));
         }
+        // Handle both 'deal_id' (Move naming) and potential variations
+        const dealId = parsedJson.deal_id as string | undefined;
+        if (dealId) {
+          dealIds.add(dealId);
+        }
+      }
+
+      if (debugConfig.sui) {
+        console.log(`Extracted ${dealIds.size} unique deal IDs:`, Array.from(dealIds));
       }
 
       // Fetch each deal and filter by user role

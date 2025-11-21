@@ -290,7 +290,7 @@ export default function DataAuditPage() {
                             <p className="font-medium truncate">{record.metadata.filename}</p>
                             <div className="flex items-center gap-4 text-xs text-muted-foreground mt-1">
                               <span className="capitalize">{record.dataType.replace('_', ' ')}</span>
-                              <span>{formatFileSize(record.size)}</span>
+                              <span>{formatFileSize(record.size ?? 0)}</span>
                               <span>
                                 <Calendar className="inline h-3 w-3 mr-1" />
                                 {formatDate(record.uploadedAt)}

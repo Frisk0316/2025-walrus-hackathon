@@ -17,7 +17,7 @@ export function FileUploadZone({
   onFileSelect,
   onUploadComplete,
   disabled = false,
-  accept = '.pdf,.xlsx,.xls,.csv,.doc,.docx',
+  accept = '.pdf,.xlsx,.xls,.csv,.doc,.docx,.json',
   maxSize = 50,
   enableEncryption = false,
 }: FileUploadZoneProps) {
@@ -199,7 +199,7 @@ export function FileUploadZone({
                   Click to upload or drag and drop
                 </p>
                 <p className="text-xs text-muted-foreground mt-1">
-                  Supported: PDF, Excel, CSV, Word (max {maxSize}MB)
+                  Supported: PDF, Excel, CSV, Word, JSON (max {maxSize}MB)
                 </p>
               </div>
             </>

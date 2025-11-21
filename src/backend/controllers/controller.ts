@@ -866,16 +866,26 @@ export class WalrusController {
         );
       }
 
+      // Extract authentication headers
+      const userAddress = req.headers.get('X-Sui-Address');
+      const signature = req.headers.get('X-Sui-Signature');
+      const signedMessage = req.headers.get('X-Sui-Signature-Message');
+
+      if (!userAddress || !signature || !signedMessage) {
+        return NextResponse.json(
+          { error: 'Missing authentication headers' },
+          { status: 401 }
+        );
+      }
+
       // Verify authentication
-      const authResult = await this.verifySignature(req);
+      const authResult = await this.verifySignature(userAddress, signature, signedMessage);
       if (!authResult.valid) {
         return NextResponse.json(
           { error: authResult.error || 'Authentication failed' },
           { status: 401 }
         );
       }
-
-      const userAddress = authResult.address!;
 
       // TODO: In production, call Nautilus TEE to perform actual calculation
       // For now, return mock calculation result

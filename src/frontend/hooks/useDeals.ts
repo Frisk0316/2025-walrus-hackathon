@@ -1,17 +1,13 @@
 /**
  * React Query hooks for Deals
- * Uses mock data for now, will be replaced with real API calls later
+ * Fetches deals from the real API with wallet authentication
  */
 
-import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
-import type {
-  DealListResponse,
-  DealSummary,
-  Deal,
-  CreateDealRequest,
-  CreateDealResponse,
-} from '@/src/frontend/lib/api-client';
-import { mockDealSummaries, mockDeals, MOCK_ADDRESSES } from '@/src/frontend/lib/mock-data';
+import { useQuery } from '@tanstack/react-query';
+import { useCurrentAccount, useSignPersonalMessage } from '@mysten/dapp-kit';
+import { useCallback } from 'react';
+import type { DealListResponse, Deal } from '@/src/frontend/lib/api-client';
+import { mockDeals } from '@/src/frontend/lib/mock-data';
 
 // Query keys
 export const dealKeys = {
@@ -22,29 +18,125 @@ export const dealKeys = {
   detail: (id: string) => [...dealKeys.details(), id] as const,
 };
 
+// Cache for signature to avoid re-signing on every query
+interface SignatureCache {
+  signature: string;
+  message: string;
+  timestamp: number;
+  address: string;
+}
+
+// Signature is valid for 4 minutes (API allows 5 minutes)
+const SIGNATURE_CACHE_DURATION = 4 * 60 * 1000;
+const SIGNATURE_CACHE_KEY = 'sui-signature-cache';
+
+// Helper functions for persistent signature cache
+function getPersistedSignatureCache(): SignatureCache | null {
+  if (typeof window === 'undefined') return null;
+  try {
+    const cached = sessionStorage.getItem(SIGNATURE_CACHE_KEY);
+    if (!cached) return null;
+    return JSON.parse(cached) as SignatureCache;
+  } catch {
+    return null;
+  }
+}
+
+function setPersistedSignatureCache(cache: SignatureCache): void {
+  if (typeof window === 'undefined') return;
+  try {
+    sessionStorage.setItem(SIGNATURE_CACHE_KEY, JSON.stringify(cache));
+  } catch {
+    // Ignore storage errors
+  }
+}
+
 /**
  * Hook to fetch all deals for the current user
  */
 export function useDeals(role?: 'buyer' | 'seller' | 'auditor') {
+  const currentAccount = useCurrentAccount();
+  const { mutateAsync: signPersonalMessage } = useSignPersonalMessage();
+
+  const getAuthHeaders = useCallback(async (): Promise<Record<string, string> | null> => {
+    if (!currentAccount?.address) return null;
+
+    // Check if we have a valid cached signature in sessionStorage
+    const cache = getPersistedSignatureCache();
+    const now = Date.now();
+    if (cache && cache.address === currentAccount.address && now - cache.timestamp < SIGNATURE_CACHE_DURATION) {
+      return {
+        'X-Sui-Address': currentAccount.address,
+        'X-Sui-Signature': cache.signature,
+        'X-Sui-Signature-Message': cache.message,
+      };
+    }
+
+    // Sign a new timestamp message
+    const timestamp = new Date().toISOString();
+    const messageBytes = new TextEncoder().encode(timestamp);
+
+    try {
+      const { signature } = await signPersonalMessage({
+        message: messageBytes,
+      });
+
+      // Cache the signature in sessionStorage
+      setPersistedSignatureCache({
+        signature,
+        message: timestamp,
+        timestamp: now,
+        address: currentAccount.address,
+      });
+
+      return {
+        'X-Sui-Address': currentAccount.address,
+        'X-Sui-Signature': signature,
+        'X-Sui-Signature-Message': timestamp,
+      };
+    } catch {
+      // User rejected or error occurred
+      return null;
+    }
+  }, [currentAccount?.address, signPersonalMessage]);
+
   return useQuery<DealListResponse>({
     queryKey: dealKeys.list(role || 'all'),
     queryFn: async () => {
-      // Simulate API delay
-      await new Promise((resolve) => setTimeout(resolve, 300));
+      const authHeaders = await getAuthHeaders();
 
-      // Return mock data
-      const filteredDeals = role
-        ? mockDealSummaries.filter((deal) => deal.userRole === role)
-        : mockDealSummaries;
+      if (!authHeaders) {
+        // Return empty list if not authenticated
+        return {
+          items: [],
+          total: 0,
+          hasMore: false,
+          limit: 20,
+          offset: 0,
+        };
+      }
 
-      return {
-        items: filteredDeals,
-        total: filteredDeals.length,
-        hasMore: false,
-        limit: 20,
-        offset: 0,
-      };
+      const params = new URLSearchParams();
+      if (role) params.set('role', role);
+
+      const response = await fetch(`/api/v1/deals?${params.toString()}`, {
+        method: 'GET',
+        headers: {
+          'Content-Type': 'application/json',
+          ...authHeaders,
+        },
+      });
+
+      if (!response.ok) {
+        const errorData = await response.json().catch(() => ({}));
+        throw new Error(errorData.message || 'Failed to fetch deals');
+      }
+
+      return response.json();
     },
+    enabled: !!currentAccount?.address,
+    staleTime: 30 * 1000, // Consider data stale after 30 seconds
+    refetchOnWindowFocus: true,
   });
 }
 
@@ -65,65 +157,8 @@ export function useDeal(dealId: string) {
   });
 }
 
-/**
- * Hook to create a new deal
- */
-export function useCreateDeal() {
-  const queryClient = useQueryClient();
-
-  return useMutation<CreateDealResponse, Error, CreateDealRequest>({
-    mutationFn: async (request: CreateDealRequest) => {
-      // Simulate API delay
-      await new Promise((resolve) => setTimeout(resolve, 500));
-
-      // Create mock deal
-      const newDeal: Deal = {
-        dealId: `0x${Math.random().toString(16).substring(2).padEnd(64, '0')}`,
-        name: request.name,
-        closingDate: request.closingDate as any,
-        currency: request.currency,
-        buyer: request.buyerAddress,
-        seller: request.sellerAddress,
-        auditor: request.auditorAddress,
-        status: 'draft',
-        periods: [],
-        metadata: request.metadata,
-        createdAt: new Date(),
-        updatedAt: new Date(),
-      };
-
-      // Add to mock data (in real app, this would be server-side)
-      mockDeals.push(newDeal);
-
-      const dealSummary: DealSummary = {
-        dealId: newDeal.dealId,
-        name: newDeal.name,
-        closingDate: newDeal.closingDate as any,
-        currency: newDeal.currency,
-        status: newDeal.status,
-        userRole: 'buyer',
-        periodCount: 0,
-        settledPeriods: 0,
-        lastActivity: newDeal.createdAt as any,
-      };
-
-      mockDealSummaries.push(dealSummary);
-
-      return {
-        deal: newDeal,
-        transaction: {
-          txBytes: 'mock_tx_bytes_base64_encoded',
-          description: `Create earn-out deal: ${newDeal.name}`,
-          estimatedGas: 1000000,
-        },
-      };
-    },
-    onSuccess: () => {
-      // Invalidate and refetch deals list
-      queryClient.invalidateQueries({ queryKey: dealKeys.lists() });
-    },
-  });
-}
+// Note: The real useCreateDeal hook is in useCreateDeal.ts
+// This file only exports query hooks for fetching deals
 
 /**
  * Hook to get deal summary statistics

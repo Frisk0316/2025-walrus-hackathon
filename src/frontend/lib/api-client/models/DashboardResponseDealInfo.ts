@@ -43,7 +43,7 @@ export interface DashboardResponseDealInfo {
      * @type {Date}
      * @memberof DashboardResponseDealInfo
      */
-    closingDate?: Date;
+    agreementDate?: Date;
     /**
      * 
      * @type {string}
@@ -118,7 +118,7 @@ export function DashboardResponseDealInfoFromJSONTyped(json: any, ignoreDiscrimi
         
         'dealId': json['dealId'],
         'name': json['name'],
-        'closingDate': !exists(json, 'closingDate') ? undefined : (new Date(json['closingDate'])),
+        'agreementDate': !exists(json, 'agreementDate') ? undefined : (new Date(json['agreementDate'])),
         'currency': !exists(json, 'currency') ? undefined : json['currency'],
         'status': json['status'],
         'roles': DashboardResponseDealInfoRolesFromJSON(json['roles']),
@@ -137,7 +137,7 @@ export function DashboardResponseDealInfoToJSON(value?: DashboardResponseDealInf
         
         'dealId': value.dealId,
         'name': value.name,
-        'closingDate': value.closingDate === undefined ? undefined : (value.closingDate.toISOString().substring(0,10)),
+        'agreementDate': value.agreementDate === undefined ? undefined : (value.agreementDate.toISOString().substring(0,10)),
         'currency': value.currency,
         'status': value.status,
         'roles': DashboardResponseDealInfoRolesToJSON(value.roles),

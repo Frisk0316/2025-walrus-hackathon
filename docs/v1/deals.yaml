@@ -81,7 +81,7 @@ paths:
                 items:
                   - dealId: "0x1234567890abcdef1234567890abcdef1234567890abcdef1234567890abcdef"
                     name: "Acquisition of TechCorp Inc."
-                    closingDate: "2025-12-31"
+                    agreementDate: "2025-12-31"
                     currency: "USD"
                     status: "active"
                     userRole: "buyer"
@@ -90,7 +90,7 @@ paths:
                     lastActivity: "2026-03-15T09:30:00Z"
                   - dealId: "0xabcdef1234567890abcdef1234567890abcdef1234567890abcdef1234567890"
                     name: "SaaS Platform Acquisition"
-                    closingDate: "2026-06-30"
+                    agreementDate: "2026-06-30"
                     currency: "USD"
                     status: "draft"
                     userRole: "auditor"
@@ -163,7 +163,7 @@ paths:
               $ref: '../schemas/deal.yaml#/components/schemas/CreateDealRequest'
             example:
               name: "Acquisition of TechCorp Inc."
-              closingDate: "2025-12-31"
+              agreementDate: "2025-12-31"
               currency: "USD"
               buyerAddress: "0xabcd1234567890abcdef1234567890abcdef1234567890abcdef1234567890"
               sellerAddress: "0xef012345678890abcdef1234567890abcdef1234567890abcdef1234567890"
@@ -183,7 +183,7 @@ paths:
                 deal:
                   dealId: "0x1234567890abcdef1234567890abcdef1234567890abcdef1234567890abcdef"
                   name: "Acquisition of TechCorp Inc."
-                  closingDate: "2025-12-31"
+                  agreementDate: "2025-12-31"
                   currency: "USD"
                   buyer: "0xabcd1234567890abcdef1234567890abcdef1234567890abcdef1234567890"
                   seller: "0xef012345678890abcdef1234567890abcdef1234567890abcdef1234567890"
@@ -271,7 +271,7 @@ paths:
               example:
                 dealId: "0x1234567890abcdef1234567890abcdef1234567890abcdef1234567890abcdef"
                 name: "Acquisition of TechCorp Inc."
-                closingDate: "2025-12-31"
+                agreementDate: "2025-12-31"
                 currency: "USD"
                 buyer: "0xabcd1234567890abcdef1234567890abcdef1234567890abcdef1234567890"
                 seller: "0xef012345678890abcdef1234567890abcdef1234567890abcdef1234567890"

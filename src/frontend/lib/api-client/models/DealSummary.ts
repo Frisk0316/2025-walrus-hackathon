@@ -36,7 +36,7 @@ export interface DealSummary {
      * @type {Date}
      * @memberof DealSummary
      */
-    closingDate?: Date;
+    agreementDate?: Date;
     /**
      * 
      * @type {string}
@@ -123,7 +123,7 @@ export function DealSummaryFromJSONTyped(json: any, ignoreDiscriminator: boolean
         
         'dealId': json['dealId'],
         'name': json['name'],
-        'closingDate': !exists(json, 'closingDate') ? undefined : (new Date(json['closingDate'])),
+        'agreementDate': !exists(json, 'agreementDate') ? undefined : (new Date(json['agreementDate'])),
         'currency': !exists(json, 'currency') ? undefined : json['currency'],
         'status': json['status'],
         'userRole': json['userRole'],
@@ -144,7 +144,7 @@ export function DealSummaryToJSON(value?: DealSummary | null): any {
         
         'dealId': value.dealId,
         'name': value.name,
-        'closingDate': value.closingDate === undefined ? undefined : (value.closingDate.toISOString().substring(0,10)),
+        'agreementDate': value.agreementDate === undefined ? undefined : (value.agreementDate.toISOString().substring(0,10)),
         'currency': value.currency,
         'status': value.status,
         'userRole': value.userRole,

@@ -1,9 +1,9 @@
 /**
- * Mock data for frontend development
- * All data structures follow the generated TypeScript types from OpenAPI spec
+ * Backend mock data for development
+ * This file contains all mock data that will be returned by API endpoints
  *
- * This mock data represents a single deal with 2 periods (Nov & Dec 2025)
- * demonstrating KPI achievement based on Contract_Spec.md calculation logic.
+ * Data structures follow the generated TypeScript types from OpenAPI spec
+ * Represents deals with periods demonstrating KPI achievement
  */
 
 import type {
@@ -13,9 +13,9 @@ import type {
   Period,
   PeriodStatusEnum,
   DashboardResponse,
-} from './api-client';
+} from '@/src/frontend/lib/api-client';
 import type { AssetReference } from '@/src/shared/types/asset';
-import { getFixedAssets } from './loadFixedAssets';
+import { getFixedAssets } from '@/src/frontend/lib/loadFixedAssets';
 
 // Mock Sui addresses
 export const MOCK_ADDRESSES = {
@@ -31,7 +31,7 @@ export const mockAssetsReferences: AssetReference[] = fixedAssets.map(asset => (
   assetName: asset.assetName,
   originalCost: asset.originalCost,
   acquisitionDate: asset.acquisitionDate,
-  estimatedUsefulLife_months: asset.usefulLife_years * 12, // Convert years to months
+  estimatedUsefulLife_months: asset.usefulLife_years * 12,
 }));
 
 // Extended WalrusBlob type for mock data with audit status
@@ -62,11 +62,35 @@ export type PeriodWithKPI = Period & {
   cumulativeNetProfit?: number;
   kpiProgress?: number; // 0-1
   kpiAchieved?: boolean;
+  settlement?: {
+    settled: boolean;
+    settledAt: string;
+    payoutAmount: number;
+    txHash: string;
+    recipient: string;
+  };
 };
 
-// Nov 2025 Period - walrusBlobs based on TestData/Nov
+// Extended Deal type for mock data
+export type DealWithExtendedFields = Deal & {
+  buyerName?: string;
+  sellerName?: string;
+  earnoutPeriodYears?: number;
+  kpiTargetAmount?: number;
+  contingentConsiderationAmount?: number;
+  headquarterExpenseAllocationPercentage?: number;
+};
+
+// KPI Calculation constants
+const MONTHLY_REVENUE = 825000;
+const MONTHLY_DEPRECIATION = 7697.92;
+const MONTHLY_PAYROLL = 22950;
+const MONTHLY_OVERHEAD = 205000;
+const MONTHLY_NET_PROFIT = 589352.08;
+
+// Nov 2025 Period - walrusBlobs (Deal 1 - All approved)
 const novBlobs: WalrusBlobWithAudit[] = [
-  // 1110 Transaction (Nov 10)
+  // Transaction blobs for Nov 10
   {
     blobId: 'blob_nov_1110_cash_receipt',
     commitment: 'commitment_nov_1110_cr_abc123',
@@ -153,7 +177,7 @@ const novBlobs: WalrusBlobWithAudit[] = [
     reviewedBy: MOCK_ADDRESSES.auditor,
     reviewedAt: '2025-11-12T10:00:00Z',
   },
-  // 1120 Transaction (Nov 20)
+  // Transaction blobs for Nov 20
   {
     blobId: 'blob_nov_1120_cash_receipt',
     commitment: 'commitment_nov_1120_cr_pqr678',
@@ -208,7 +232,7 @@ const novBlobs: WalrusBlobWithAudit[] = [
   },
   {
     blobId: 'blob_nov_1120_sales_invoice',
-    commitment: 'commitment_nov_1120_si_yz a567',
+    commitment: 'commitment_nov_1120_si_yza567',
     dataType: 'transaction',
     size: 36120,
     uploadedAt: '2025-11-21T09:15:00Z',
@@ -240,7 +264,7 @@ const novBlobs: WalrusBlobWithAudit[] = [
     reviewedBy: MOCK_ADDRESSES.auditor,
     reviewedAt: '2025-11-22T10:00:00Z',
   },
-  // 1130 Expense Report (Nov 30 - Month End)
+  // Expense reports for Nov 30
   {
     blobId: 'blob_nov_1130_corporate_overhead',
     commitment: 'commitment_nov_1130_co_efg123',
@@ -316,9 +340,9 @@ const novBlobs: WalrusBlobWithAudit[] = [
   },
 ];
 
-// Dec 2025 Period - walrusBlobs based on TestData/Dec
+// Dec 2025 Period - walrusBlobs (Deal 1 - All approved)
 const decBlobs: WalrusBlobWithAudit[] = [
-  // 1210 Transaction (Dec 10)
+  // Similar structure to Nov, with Dec dates
   {
     blobId: 'blob_dec_1210_cash_receipt',
     commitment: 'commitment_dec_1210_cr_qrs345',
@@ -405,7 +429,6 @@ const decBlobs: WalrusBlobWithAudit[] = [
     reviewedBy: MOCK_ADDRESSES.auditor,
     reviewedAt: '2025-12-12T10:00:00Z',
   },
-  // 1220 Transaction (Dec 20)
   {
     blobId: 'blob_dec_1220_cash_receipt',
     commitment: 'commitment_dec_1220_cr_fgh890',
@@ -492,7 +515,6 @@ const decBlobs: WalrusBlobWithAudit[] = [
     reviewedBy: MOCK_ADDRESSES.auditor,
     reviewedAt: '2025-12-22T10:00:00Z',
   },
-  // 1231 Expense Report (Dec 31 - Month End)
   {
     blobId: 'blob_dec_1231_corporate_overhead',
     commitment: 'commitment_dec_1231_co_uvw345',
@@ -568,9 +590,8 @@ const decBlobs: WalrusBlobWithAudit[] = [
   },
 ];
 
-// Nov 2025 Period for Deal 2 (In-Progress, Mixed Audit Status)
+// Nov 2025 Period for Deal 2 (Mixed audit status)
 const nov2Blobs: WalrusBlobWithAudit[] = [
-  // 1110 Transaction - Mix of approved and pending
   {
     blobId: 'blob_nov2_1110_cash_receipt',
     commitment: 'commitment_nov2_1110_cr_aaa111',
@@ -656,7 +677,6 @@ const nov2Blobs: WalrusBlobWithAudit[] = [
     },
     reviewStatus: 'pending',
   },
-  // 1120 Transaction - Mix of approved and changes_requested
   {
     blobId: 'blob_nov2_1120_cash_receipt',
     commitment: 'commitment_nov2_1120_cr_fff666',
@@ -748,7 +768,6 @@ const nov2Blobs: WalrusBlobWithAudit[] = [
     reviewedAt: '2025-11-22T14:40:00Z',
     reviewNotes: 'Shipping document is missing recipient signature. Please upload the signed version.',
   },
-  // 1130 Expense Report - Mix of approved and pending
   {
     blobId: 'blob_nov2_1130_corporate_overhead',
     commitment: 'commitment_nov2_1130_co_kkk111',
@@ -822,22 +841,8 @@ const nov2Blobs: WalrusBlobWithAudit[] = [
   },
 ];
 
-// KPI Calculation based on Contract_Spec.md:
-// Revenue = 75,000 + 750,000 = 825,000 (both Nov and Dec)
-// Expenses:
-//   - Depreciation = 7,697.92 (per month)
-//   - Payroll = 22,950 (3,950 + 19,000)
-//   - HQ Allocation = 205,000 (10% of 2,050,000)
-// Net Profit = 825,000 - 7,697.92 - 22,950 - 205,000 = 589,352.08
-
-const MONTHLY_REVENUE = 825000;
-const MONTHLY_DEPRECIATION = 7697.92;
-const MONTHLY_PAYROLL = 22950;
-const MONTHLY_OVERHEAD = 205000;
-const MONTHLY_NET_PROFIT = 589352.08;
-
 // Mock Periods with KPI data
-const mockPeriodsWithKPI: PeriodWithKPI[] = ([
+const mockPeriodsWithKPI: PeriodWithKPI[] = [
   {
     periodId: 'period_nov_2025',
     name: 'November 2025',
@@ -853,7 +858,7 @@ const mockPeriodsWithKPI: PeriodWithKPI[] = ([
     },
     monthlyNetProfit: MONTHLY_NET_PROFIT,
     cumulativeNetProfit: MONTHLY_NET_PROFIT,
-    kpiProgress: MONTHLY_NET_PROFIT / 900000, // 0.655 (65.5%)
+    kpiProgress: MONTHLY_NET_PROFIT / 900000,
     kpiAchieved: false,
   },
   {
@@ -870,8 +875,8 @@ const mockPeriodsWithKPI: PeriodWithKPI[] = ([
       overheadAllocation: MONTHLY_OVERHEAD,
     },
     monthlyNetProfit: MONTHLY_NET_PROFIT,
-    cumulativeNetProfit: MONTHLY_NET_PROFIT * 2, // 1,178,704.16
-    kpiProgress: (MONTHLY_NET_PROFIT * 2) / 900000, // 1.309 (130.9%)
+    cumulativeNetProfit: MONTHLY_NET_PROFIT * 2,
+    kpiProgress: (MONTHLY_NET_PROFIT * 2) / 900000,
     kpiAchieved: true,
     settlement: {
       settled: true,
@@ -881,10 +886,10 @@ const mockPeriodsWithKPI: PeriodWithKPI[] = ([
       recipient: MOCK_ADDRESSES.seller,
     },
   },
-]) as any;
+] as any;
 
-// Mock Periods for Deal 2 (November only, showing audit workflow)
-const mockPeriodsWithKPI_Deal2: PeriodWithKPI[] = ([
+// Mock Periods for Deal 2
+const mockPeriodsWithKPI_Deal2: PeriodWithKPI[] = [
   {
     periodId: 'period_nov_2025_deal2',
     name: 'November 2025',
@@ -900,22 +905,12 @@ const mockPeriodsWithKPI_Deal2: PeriodWithKPI[] = ([
     },
     monthlyNetProfit: MONTHLY_NET_PROFIT,
     cumulativeNetProfit: MONTHLY_NET_PROFIT,
-    kpiProgress: MONTHLY_NET_PROFIT / 900000, // 0.655 (65.5%)
+    kpiProgress: MONTHLY_NET_PROFIT / 900000,
     kpiAchieved: false,
   },
-]) as any;
+] as any;
 
-// Extended Deal type for mock data with new fields from Contract_Spec.md
-export type DealWithExtendedFields = Deal & {
-  buyerName?: string;
-  sellerName?: string;
-  earnoutPeriodYears?: number;
-  kpiTargetAmount?: number;
-  contingentConsiderationAmount?: number;
-  headquarterExpenseAllocationPercentage?: number;
-};
-
-// Single Mock Deal
+// Mock Deals
 export const mockDeals: DealWithExtendedFields[] = [
   {
     dealId: '0x1234567890abcdef1234567890abcdef1234567890abcdef1234567890abcdef',
@@ -982,117 +977,14 @@ export const mockDealSummaries: DealSummary[] = mockDeals.map((deal) => ({
   lastActivity: deal.updatedAt as any,
 }));
 
-// Mock Dashboard Response
-export const mockDashboardResponse: DashboardResponse = ({
-  dealInfo: {
-    dealId: mockDeals[0].dealId,
-    name: mockDeals[0].name,
-    buyerName: mockDeals[0].buyerName,
-    sellerName: mockDeals[0].sellerName,
-    agreementDate: mockDeals[0].agreementDate,
-    currency: mockDeals[0].currency,
-    status: mockDeals[0].status,
-    earnoutPeriodYears: mockDeals[0].earnoutPeriodYears,
-    kpiTargetAmount: mockDeals[0].kpiTargetAmount,
-    contingentConsiderationAmount: mockDeals[0].contingentConsiderationAmount,
-    headquarterExpenseAllocationPercentage: mockDeals[0].headquarterExpenseAllocationPercentage,
-    roles: {
-      buyer: MOCK_ADDRESSES.buyer,
-      seller: MOCK_ADDRESSES.seller,
-      auditor: MOCK_ADDRESSES.auditor,
-    },
-    userRole: 'buyer',
-  },
-  periodsSummary: [
-    {
-      periodId: 'period_nov_2025',
-      name: 'November 2025',
-      dateRange: {
-        start: '2025-11-01',
-        end: '2025-11-30',
-      },
-      dataUploadProgress: {
-        blobCount: 14,
-        lastUploadAt: '2025-12-01T10:15:00Z',
-        completeness: 100,
-      },
-      kpiStatus: 'approved',
-      kpiValue: MONTHLY_NET_PROFIT,
-      settlementStatus: 'settled',
-    },
-    {
-      periodId: 'period_dec_2025',
-      name: 'December 2025',
-      dateRange: {
-        start: '2025-12-01',
-        end: '2025-12-31',
-      },
-      dataUploadProgress: {
-        blobCount: 14,
-        lastUploadAt: '2026-01-02T10:15:00Z',
-        completeness: 100,
-      },
-      kpiStatus: 'approved',
-      kpiValue: MONTHLY_NET_PROFIT * 2,
-      settlementStatus: 'settled',
-      settlementAmount: 30000000,
-    },
-  ],
-  recentEvents: [
-    {
-      type: 'settlement',
-      timestamp: '2026-01-05T10:00:00Z',
-      actor: MOCK_ADDRESSES.buyer,
-      actorRole: 'buyer',
-      description: 'KPI Target Achieved! Settlement executed: $30,000,000 paid to seller',
-      txHash: 'KpI8rEdFgHnM2xYz1RnN2BcE4MpX7Ri5L',
-      metadata: {
-        periodId: 'period_dec_2025',
-        amount: 30000000,
-        cumulativeNetProfit: MONTHLY_NET_PROFIT * 2,
-        kpiTarget: 900000,
-      },
-    },
-    {
-      type: 'data_upload',
-      timestamp: '2026-01-02T10:15:00Z',
-      actor: MOCK_ADDRESSES.buyer,
-      actorRole: 'buyer',
-      description: 'Uploaded expense_report for period_dec_2025',
-      metadata: {
-        periodId: 'period_dec_2025',
-        blobId: 'blob_dec_1231_payslip_second',
-        dataType: 'expense_report',
-      },
-    },
-    {
-      type: 'data_upload',
-      timestamp: '2025-12-01T10:15:00Z',
-      actor: MOCK_ADDRESSES.buyer,
-      actorRole: 'buyer',
-      description: 'Uploaded expense_report for period_nov_2025',
-      metadata: {
-        periodId: 'period_nov_2025',
-        blobId: 'blob_nov_1130_payslip_second',
-        dataType: 'expense_report',
-      },
-    },
-  ],
-  healthMetrics: {
-    overallProgress: 100,
-    pendingActions: 0,
-    nextDeadline: undefined,
-    dataCompletenessScore: 100,
-    risksDetected: [],
-  },
-}) as any;
-
 // Helper to get dashboard by dealId and role
-export function getDashboardByDealId(dealId: string, role: 'buyer' | 'seller' | 'auditor' = 'buyer'): DashboardResponse {
+export function getDashboardByDealId(
+  dealId: string,
+  role: 'buyer' | 'seller' | 'auditor' = 'buyer'
+): DashboardResponse {
   const deal = mockDeals.find(d => d.dealId === dealId) || mockDeals[0];
   const periods = (deal.periods || []) as PeriodWithKPI[];
 
-  // Generate periodsSummary dynamically based on the deal's periods
   const periodsSummary = periods.map(period => {
     const blobCount = period.walrusBlobs?.length || 0;
     const lastBlob = period.walrusBlobs?.[period.walrusBlobs.length - 1];
@@ -1116,10 +1008,8 @@ export function getDashboardByDealId(dealId: string, role: 'buyer' | 'seller' | 
     };
   });
 
-  // Generate recent events based on the deal
   const recentEvents = [];
 
-  // Add settlement events for settled periods
   for (const period of periods) {
     if (period.settlement?.settled) {
       recentEvents.push({
@@ -1138,7 +1028,6 @@ export function getDashboardByDealId(dealId: string, role: 'buyer' | 'seller' | 
       });
     }
 
-    // Add data upload events
     if (period.walrusBlobs && period.walrusBlobs.length > 0) {
       const lastBlob = period.walrusBlobs[period.walrusBlobs.length - 1];
       recentEvents.push({
@@ -1155,7 +1044,6 @@ export function getDashboardByDealId(dealId: string, role: 'buyer' | 'seller' | 
     }
   }
 
-  // Sort events by timestamp descending
   recentEvents.sort((a, b) => new Date(b.timestamp).getTime() - new Date(a.timestamp).getTime());
 
   return {
@@ -1179,7 +1067,7 @@ export function getDashboardByDealId(dealId: string, role: 'buyer' | 'seller' | 
       userRole: role,
     },
     periodsSummary,
-    recentEvents: recentEvents.slice(0, 10), // Only show last 10 events
+    recentEvents: recentEvents.slice(0, 10),
     healthMetrics: {
       overallProgress: periods.length > 0
         ? (periods.filter(p => p.status === 'settled').length / periods.length) * 100

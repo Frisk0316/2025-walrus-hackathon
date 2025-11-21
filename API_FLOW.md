@@ -85,7 +85,7 @@ status=active       # 只顯示 active 狀態
 ```json
 {
   "name": "Acquisition of TechCorp Inc.",
-  "closingDate": "2025-12-31",
+  "agreementDate": "2025-12-31",
   "currency": "USD",
   "buyerAddress": "0xabcd...",
   "sellerAddress": "0xef01...",

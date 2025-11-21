@@ -24,7 +24,7 @@ components:
             name:
               type: string
               example: "Acquisition of TechCorp Inc."
-            closingDate:
+            agreementDate:
               type: string
               format: date
               example: "2025-12-31"

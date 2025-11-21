@@ -45,7 +45,7 @@ export interface Deal {
      * @type {Date}
      * @memberof Deal
      */
-    closingDate: Date;
+    agreementDate: Date;
     /**
      * Currency used for earn-out calculations
      * @type {string}
@@ -139,7 +139,7 @@ export function instanceOfDeal(value: object): boolean {
     let isInstance = true;
     isInstance = isInstance && "dealId" in value;
     isInstance = isInstance && "name" in value;
-    isInstance = isInstance && "closingDate" in value;
+    isInstance = isInstance && "agreementDate" in value;
     isInstance = isInstance && "currency" in value;
     isInstance = isInstance && "buyer" in value;
     isInstance = isInstance && "status" in value;
@@ -160,7 +160,7 @@ export function DealFromJSONTyped(json: any, ignoreDiscriminator: boolean): Deal
         
         'dealId': json['dealId'],
         'name': json['name'],
-        'closingDate': (new Date(json['closingDate'])),
+        'agreementDate': (new Date(json['agreementDate'])),
         'currency': json['currency'],
         'buyer': json['buyer'],
         'seller': !exists(json, 'seller') ? undefined : json['seller'],
@@ -184,7 +184,7 @@ export function DealToJSON(value?: Deal | null): any {
         
         'dealId': value.dealId,
         'name': value.name,
-        'closingDate': (value.closingDate.toISOString().substring(0,10)),
+        'agreementDate': (value.agreementDate.toISOString().substring(0,10)),
         'currency': value.currency,
         'buyer': value.buyer,
         'seller': value.seller,

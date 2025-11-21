@@ -30,7 +30,7 @@ export interface CreateDealRequest {
      * @type {Date}
      * @memberof CreateDealRequest
      */
-    closingDate: Date;
+    agreementDate: Date;
     /**
      * Currency for earn-out
      * @type {string}
@@ -83,7 +83,7 @@ export type CreateDealRequestCurrencyEnum = typeof CreateDealRequestCurrencyEnum
 export function instanceOfCreateDealRequest(value: object): boolean {
     let isInstance = true;
     isInstance = isInstance && "name" in value;
-    isInstance = isInstance && "closingDate" in value;
+    isInstance = isInstance && "agreementDate" in value;
     isInstance = isInstance && "currency" in value;
     isInstance = isInstance && "buyerAddress" in value;
 
@@ -101,7 +101,7 @@ export function CreateDealRequestFromJSONTyped(json: any, ignoreDiscriminator: b
     return {
         
         'name': json['name'],
-        'closingDate': (new Date(json['closingDate'])),
+        'agreementDate': (new Date(json['agreementDate'])),
         'currency': json['currency'],
         'buyerAddress': json['buyerAddress'],
         'sellerAddress': !exists(json, 'sellerAddress') ? undefined : json['sellerAddress'],
@@ -120,7 +120,7 @@ export function CreateDealRequestToJSON(value?: CreateDealRequest | null): any {
     return {
         
         'name': value.name,
-        'closingDate': (value.closingDate.toISOString().substring(0,10)),
+        'agreementDate': (value.agreementDate.toISOString().substring(0,10)),
         'currency': value.currency,
         'buyerAddress': value.buyerAddress,
         'sellerAddress': value.sellerAddress,

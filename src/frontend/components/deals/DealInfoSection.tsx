@@ -1,8 +1,9 @@
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
-import { Calendar, DollarSign, Users, FileText, TrendingUp, Target, Percent } from 'lucide-react';
+import { Calendar, DollarSign, Users, FileText, TrendingUp, Target, Percent, CheckCircle2 } from 'lucide-react';
 import type { DashboardResponseDealInfo } from '@/src/frontend/lib/api-client';
-import type { DealWithExtendedFields } from '@/src/frontend/lib/mock-data';
+import type { DealWithExtendedFields, PeriodWithKPI } from '@/src/frontend/lib/mock-data';
+import { mockDeals } from '@/src/frontend/lib/mock-data';
 
 interface DealInfoSectionProps {
   dealInfo: DashboardResponseDealInfo & {
@@ -69,6 +70,16 @@ export function DealInfoSection({ dealInfo }: DealInfoSectionProps) {
     return `${(value * 100).toFixed(1)}%`;
   };
 
+  // Get KPI summary data from mock deals
+  const deal = mockDeals.find(d => d.dealId === dealInfo.dealId);
+  const periods = deal?.periods as PeriodWithKPI[] | undefined;
+  const lastPeriod = periods?.[periods.length - 1];
+  const cumulativeNetProfit = lastPeriod?.cumulativeNetProfit;
+  const kpiTarget = deal?.kpiTargetAmount || 900000;
+  const kpiAchieved = lastPeriod?.kpiAchieved || false;
+  const kpiProgress = lastPeriod?.kpiProgress || 0;
+  const settlement = lastPeriod?.settlement;
+
   return (
     <div className="space-y-4">
       {/* Status Card */}
@@ -92,9 +103,9 @@ export function DealInfoSection({ dealInfo }: DealInfoSectionProps) {
           <div className="flex items-start gap-3">
             <Calendar className="h-5 w-5 text-muted-foreground mt-0.5" />
             <div className="flex-1">
-              <div className="text-sm font-medium">Closing Date</div>
+              <div className="text-sm font-medium">Agreement Date</div>
               <div className="text-sm text-muted-foreground">
-                {formatDate(dealInfo.closingDate)}
+                {formatDate(dealInfo.agreementDate)}
               </div>
             </div>
           </div>
@@ -206,6 +217,98 @@ export function DealInfoSection({ dealInfo }: DealInfoSectionProps) {
                     {formatPercentage(dealInfo.headquarterExpenseAllocationPercentage)} of corporate pool
                   </div>
                 </div>
+              </div>
+            )}
+          </CardContent>
+        </Card>
+      )}
+
+      {/* KPI Summary Card */}
+      {cumulativeNetProfit !== undefined && (
+        <Card className={kpiAchieved ? 'border-green-500 border-2' : ''}>
+          <CardHeader>
+            <div className="flex items-center justify-between">
+              <CardTitle className="text-lg">KPI Summary</CardTitle>
+              {kpiAchieved && (
+                <Badge variant="default" className="bg-green-600">
+                  <CheckCircle2 className="mr-1 h-3 w-3" />
+                  Achieved
+                </Badge>
+              )}
+            </div>
+          </CardHeader>
+          <CardContent className="space-y-4">
+            {/* Cumulative Net Profit */}
+            <div className="flex items-start gap-3">
+              <TrendingUp className="h-5 w-5 text-purple-600 mt-0.5" />
+              <div className="flex-1">
+                <div className="text-sm font-medium">Total Cumulative Net Profit</div>
+                <div className="text-2xl font-bold text-purple-600">
+                  {formatCurrency(cumulativeNetProfit)}
+                </div>
+              </div>
+            </div>
+
+            {/* KPI Target */}
+            <div className="flex items-start gap-3">
+              <Target className="h-5 w-5 text-muted-foreground mt-0.5" />
+              <div className="flex-1">
+                <div className="text-sm font-medium">KPI Target</div>
+                <div className="text-lg font-semibold">
+                  {formatCurrency(kpiTarget)}
+                </div>
+              </div>
+            </div>
+
+            {/* Achievement Rate */}
+            <div>
+              <div className="flex items-center justify-between mb-2">
+                <div className="text-sm font-medium">Achievement Rate</div>
+                <span className={`text-lg font-bold ${kpiAchieved ? 'text-green-600' : ''}`}>
+                  {(kpiProgress * 100).toFixed(1)}%
+                </span>
+              </div>
+              <div className="w-full bg-muted rounded-full h-3">
+                <div
+                  className={`h-3 rounded-full transition-all ${
+                    kpiAchieved ? 'bg-green-600' : 'bg-primary'
+                  }`}
+                  style={{
+                    width: `${Math.min(kpiProgress * 100, 100)}%`,
+                  }}
+                />
+              </div>
+            </div>
+
+            {/* Settlement Info (if achieved) */}
+            {kpiAchieved && settlement && (
+              <div className="pt-4 border-t space-y-2">
+                <div className="flex items-center gap-2 text-green-700 dark:text-green-400 font-semibold">
+                  <CheckCircle2 className="h-5 w-5" />
+                  <span>Settlement Completed</span>
+                </div>
+                <div className="flex items-center justify-between">
+                  <span className="text-sm text-muted-foreground">Amount Paid to Seller</span>
+                  <span className="text-xl font-bold text-green-600">
+                    {formatCurrency(settlement.payoutAmount)}
+                  </span>
+                </div>
+                <div className="flex items-center justify-between text-sm">
+                  <span className="text-muted-foreground">Settlement Date</span>
+                  <span>{formatDate(settlement.settledAt)}</span>
+                </div>
+                {settlement.txHash && (
+                  <div className="text-xs text-muted-foreground font-mono pt-2 border-t">
+                    Transaction Hash: {settlement.txHash}
+                  </div>
+                )}
+              </div>
+            )}
+
+            {/* Status Message */}
+            {!kpiAchieved && (
+              <div className="text-sm text-muted-foreground italic">
+                KPI target not yet achieved. Continue monitoring period performance.
               </div>
             )}
           </CardContent>

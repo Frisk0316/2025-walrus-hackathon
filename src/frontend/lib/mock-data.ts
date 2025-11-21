@@ -1,6 +1,9 @@
 /**
  * Mock data for frontend development
  * All data structures follow the generated TypeScript types from OpenAPI spec
+ *
+ * This mock data represents a single deal with 2 periods (Nov & Dec 2025)
+ * demonstrating KPI achievement based on Contract_Spec.md calculation logic.
  */
 
 import type {
@@ -9,8 +12,6 @@ import type {
   DealStatusEnum,
   Period,
   PeriodStatusEnum,
-  KPIType,
-  EarnoutFormula,
   DashboardResponse,
 } from './api-client';
 
@@ -19,34 +20,6 @@ export const MOCK_ADDRESSES = {
   buyer: '0xabcd1234567890abcdef1234567890abcdef1234567890abcdef1234567890ab',
   seller: '0xef012345678890abcdef1234567890abcdef1234567890abcdef1234567890ef',
   auditor: '0x9876543210abcdef1234567890abcdef1234567890abcdef1234567890abcd98',
-};
-
-// Mock KPI Types
-const mockKPITypes: KPIType[] = [
-  {
-    type: 'revenue',
-    threshold: 10000000,
-    unit: 'USD',
-    description: 'Annual revenue target for earn-out calculation',
-  },
-  {
-    type: 'ebitda',
-    threshold: 2000000,
-    unit: 'USD',
-    description: 'EBITDA target for performance bonus',
-  },
-];
-
-// Mock Earnout Formula
-const mockFormula: EarnoutFormula = {
-  type: 'linear',
-  maxPayout: 5000000,
-  parameters: {
-    minThreshold: 10000000,
-    maxThreshold: 15000000,
-    minPayout: 0,
-    maxPayout: 5000000,
-  },
 };
 
 // Extended WalrusBlob type for mock data with audit status
@@ -65,154 +38,858 @@ export type WalrusBlobWithAudit = {
   reviewNotes?: string;
 };
 
-// Mock Periods
-const mockPeriods: Period[] = ([
+// Extended Period type with KPI calculation fields
+export type PeriodWithKPI = Period & {
+  monthlyRevenue?: number;
+  monthlyExpenses?: {
+    depreciation: number;
+    payroll: number;
+    overheadAllocation: number;
+  };
+  monthlyNetProfit?: number;
+  cumulativeNetProfit?: number;
+  kpiProgress?: number; // 0-1
+  kpiAchieved?: boolean;
+};
+
+// Nov 2025 Period - walrusBlobs based on TestData/Nov
+const novBlobs: WalrusBlobWithAudit[] = [
+  // 1110 Transaction (Nov 10)
   {
-    periodId: 'period_2026',
-    name: '2026 Fiscal Year',
-    startDate: '2026-01-01',
-    endDate: '2026-12-31',
-    kpiTypes: mockKPITypes,
-    formula: mockFormula,
+    blobId: 'blob_nov_1110_cash_receipt',
+    commitment: 'commitment_nov_1110_cr_abc123',
+    dataType: 'transaction',
+    size: 34886,
+    uploadedAt: '2025-11-11T09:00:00Z',
+    uploaderAddress: MOCK_ADDRESSES.buyer,
+    metadata: {
+      filename: '1110CashReceipt.pdf',
+      mimeType: 'application/pdf',
+      transactionDate: '2025-11-10',
+      updateType: 'transaction',
+    },
+    reviewStatus: 'approved',
+    reviewedBy: MOCK_ADDRESSES.auditor,
+    reviewedAt: '2025-11-12T10:00:00Z',
+  },
+  {
+    blobId: 'blob_nov_1110_journal',
+    commitment: 'commitment_nov_1110_je_def456',
+    dataType: 'transaction',
+    size: 566,
+    uploadedAt: '2025-11-11T09:05:00Z',
+    uploaderAddress: MOCK_ADDRESSES.buyer,
+    metadata: {
+      filename: '1110JournalEntry.json',
+      mimeType: 'application/json',
+      transactionDate: '2025-11-10',
+      updateType: 'transaction',
+      revenue: 75000,
+    },
+    reviewStatus: 'approved',
+    reviewedBy: MOCK_ADDRESSES.auditor,
+    reviewedAt: '2025-11-12T10:00:00Z',
+  },
+  {
+    blobId: 'blob_nov_1110_sales_contract',
+    commitment: 'commitment_nov_1110_sc_ghi789',
+    dataType: 'transaction',
+    size: 37043,
+    uploadedAt: '2025-11-11T09:10:00Z',
+    uploaderAddress: MOCK_ADDRESSES.buyer,
+    metadata: {
+      filename: '1110SalesContract.pdf',
+      mimeType: 'application/pdf',
+      transactionDate: '2025-11-10',
+      updateType: 'transaction',
+    },
+    reviewStatus: 'approved',
+    reviewedBy: MOCK_ADDRESSES.auditor,
+    reviewedAt: '2025-11-12T10:00:00Z',
+  },
+  {
+    blobId: 'blob_nov_1110_sales_invoice',
+    commitment: 'commitment_nov_1110_si_jkl012',
+    dataType: 'transaction',
+    size: 36056,
+    uploadedAt: '2025-11-11T09:15:00Z',
+    uploaderAddress: MOCK_ADDRESSES.buyer,
+    metadata: {
+      filename: '1110SalesInvoice.pdf',
+      mimeType: 'application/pdf',
+      transactionDate: '2025-11-10',
+      updateType: 'transaction',
+    },
+    reviewStatus: 'approved',
+    reviewedBy: MOCK_ADDRESSES.auditor,
+    reviewedAt: '2025-11-12T10:00:00Z',
+  },
+  {
+    blobId: 'blob_nov_1110_shipping',
+    commitment: 'commitment_nov_1110_sd_mno345',
+    dataType: 'transaction',
+    size: 35938,
+    uploadedAt: '2025-11-11T09:20:00Z',
+    uploaderAddress: MOCK_ADDRESSES.buyer,
+    metadata: {
+      filename: '1110ShippingDocument.pdf',
+      mimeType: 'application/pdf',
+      transactionDate: '2025-11-10',
+      updateType: 'transaction',
+    },
+    reviewStatus: 'approved',
+    reviewedBy: MOCK_ADDRESSES.auditor,
+    reviewedAt: '2025-11-12T10:00:00Z',
+  },
+  // 1120 Transaction (Nov 20)
+  {
+    blobId: 'blob_nov_1120_cash_receipt',
+    commitment: 'commitment_nov_1120_cr_pqr678',
+    dataType: 'transaction',
+    size: 34920,
+    uploadedAt: '2025-11-21T09:00:00Z',
+    uploaderAddress: MOCK_ADDRESSES.buyer,
+    metadata: {
+      filename: '1120CashReceipt.pdf',
+      mimeType: 'application/pdf',
+      transactionDate: '2025-11-20',
+      updateType: 'transaction',
+    },
+    reviewStatus: 'approved',
+    reviewedBy: MOCK_ADDRESSES.auditor,
+    reviewedAt: '2025-11-22T10:00:00Z',
+  },
+  {
+    blobId: 'blob_nov_1120_journal',
+    commitment: 'commitment_nov_1120_je_stu901',
+    dataType: 'transaction',
+    size: 570,
+    uploadedAt: '2025-11-21T09:05:00Z',
+    uploaderAddress: MOCK_ADDRESSES.buyer,
+    metadata: {
+      filename: '1120JournalEntry.json',
+      mimeType: 'application/json',
+      transactionDate: '2025-11-20',
+      updateType: 'transaction',
+      revenue: 750000,
+    },
+    reviewStatus: 'approved',
+    reviewedBy: MOCK_ADDRESSES.auditor,
+    reviewedAt: '2025-11-22T10:00:00Z',
+  },
+  {
+    blobId: 'blob_nov_1120_sales_contract',
+    commitment: 'commitment_nov_1120_sc_vwx234',
+    dataType: 'transaction',
+    size: 37100,
+    uploadedAt: '2025-11-21T09:10:00Z',
+    uploaderAddress: MOCK_ADDRESSES.buyer,
+    metadata: {
+      filename: '1120SalesContract.pdf',
+      mimeType: 'application/pdf',
+      transactionDate: '2025-11-20',
+      updateType: 'transaction',
+    },
+    reviewStatus: 'approved',
+    reviewedBy: MOCK_ADDRESSES.auditor,
+    reviewedAt: '2025-11-22T10:00:00Z',
+  },
+  {
+    blobId: 'blob_nov_1120_sales_invoice',
+    commitment: 'commitment_nov_1120_si_yz a567',
+    dataType: 'transaction',
+    size: 36120,
+    uploadedAt: '2025-11-21T09:15:00Z',
+    uploaderAddress: MOCK_ADDRESSES.buyer,
+    metadata: {
+      filename: '1120SalesInvoice.pdf',
+      mimeType: 'application/pdf',
+      transactionDate: '2025-11-20',
+      updateType: 'transaction',
+    },
+    reviewStatus: 'approved',
+    reviewedBy: MOCK_ADDRESSES.auditor,
+    reviewedAt: '2025-11-22T10:00:00Z',
+  },
+  {
+    blobId: 'blob_nov_1120_shipping',
+    commitment: 'commitment_nov_1120_sd_bcd890',
+    dataType: 'transaction',
+    size: 35980,
+    uploadedAt: '2025-11-21T09:20:00Z',
+    uploaderAddress: MOCK_ADDRESSES.buyer,
+    metadata: {
+      filename: '1120ShippingDocument.pdf',
+      mimeType: 'application/pdf',
+      transactionDate: '2025-11-20',
+      updateType: 'transaction',
+    },
+    reviewStatus: 'approved',
+    reviewedBy: MOCK_ADDRESSES.auditor,
+    reviewedAt: '2025-11-22T10:00:00Z',
+  },
+  // 1130 Expense Report (Nov 30 - Month End)
+  {
+    blobId: 'blob_nov_1130_corporate_overhead',
+    commitment: 'commitment_nov_1130_co_efg123',
+    dataType: 'expense_report',
+    size: 414,
+    uploadedAt: '2025-12-01T10:00:00Z',
+    uploaderAddress: MOCK_ADDRESSES.buyer,
+    metadata: {
+      filename: 'CorporateOverheadReport_forHeadquarterCostAllocation.json',
+      mimeType: 'application/json',
+      date: '2025-11-30',
+      updateType: 'expense_report',
+      totalOverheadPool: 2050000,
+    },
+    reviewStatus: 'approved',
+    reviewedBy: MOCK_ADDRESSES.auditor,
+    reviewedAt: '2025-12-02T09:00:00Z',
+  },
+  {
+    blobId: 'blob_nov_1130_fixed_assets',
+    commitment: 'commitment_nov_1130_fa_hij456',
+    dataType: 'expense_report',
+    size: 1393,
+    uploadedAt: '2025-12-01T10:05:00Z',
+    uploaderAddress: MOCK_ADDRESSES.buyer,
+    metadata: {
+      filename: 'FixedAssetsRegister_forDepreciation.json',
+      mimeType: 'application/json',
+      date: '2025-11-30',
+      updateType: 'expense_report',
+    },
+    reviewStatus: 'approved',
+    reviewedBy: MOCK_ADDRESSES.auditor,
+    reviewedAt: '2025-12-02T09:00:00Z',
+  },
+  {
+    blobId: 'blob_nov_1130_payslip_first',
+    commitment: 'commitment_nov_1130_ps1_klm789',
+    dataType: 'expense_report',
+    size: 941,
+    uploadedAt: '2025-12-01T10:10:00Z',
+    uploaderAddress: MOCK_ADDRESSES.buyer,
+    metadata: {
+      filename: 'Payslip_first_forPayrollExpense.json',
+      mimeType: 'application/json',
+      date: '2025-11-30',
+      updateType: 'expense_report',
+      employeeName: 'Mark Smith',
+      grossPay: 3950,
+    },
+    reviewStatus: 'approved',
+    reviewedBy: MOCK_ADDRESSES.auditor,
+    reviewedAt: '2025-12-02T09:00:00Z',
+  },
+  {
+    blobId: 'blob_nov_1130_payslip_second',
+    commitment: 'commitment_nov_1130_ps2_nop012',
+    dataType: 'expense_report',
+    size: 929,
+    uploadedAt: '2025-12-01T10:15:00Z',
+    uploaderAddress: MOCK_ADDRESSES.buyer,
+    metadata: {
+      filename: 'Payslip_second_forPayrollExpense.json',
+      mimeType: 'application/json',
+      date: '2025-11-30',
+      updateType: 'expense_report',
+      employeeName: 'Lily Chen',
+      grossPay: 19000,
+    },
+    reviewStatus: 'approved',
+    reviewedBy: MOCK_ADDRESSES.auditor,
+    reviewedAt: '2025-12-02T09:00:00Z',
+  },
+];
+
+// Dec 2025 Period - walrusBlobs based on TestData/Dec
+const decBlobs: WalrusBlobWithAudit[] = [
+  // 1210 Transaction (Dec 10)
+  {
+    blobId: 'blob_dec_1210_cash_receipt',
+    commitment: 'commitment_dec_1210_cr_qrs345',
+    dataType: 'transaction',
+    size: 34890,
+    uploadedAt: '2025-12-11T09:00:00Z',
+    uploaderAddress: MOCK_ADDRESSES.buyer,
+    metadata: {
+      filename: '1210CashReceipt.pdf',
+      mimeType: 'application/pdf',
+      transactionDate: '2025-12-10',
+      updateType: 'transaction',
+    },
+    reviewStatus: 'approved',
+    reviewedBy: MOCK_ADDRESSES.auditor,
+    reviewedAt: '2025-12-12T10:00:00Z',
+  },
+  {
+    blobId: 'blob_dec_1210_journal',
+    commitment: 'commitment_dec_1210_je_tuv678',
+    dataType: 'transaction',
+    size: 568,
+    uploadedAt: '2025-12-11T09:05:00Z',
+    uploaderAddress: MOCK_ADDRESSES.buyer,
+    metadata: {
+      filename: '1210JournalEntry.json',
+      mimeType: 'application/json',
+      transactionDate: '2025-12-10',
+      updateType: 'transaction',
+      revenue: 75000,
+    },
+    reviewStatus: 'approved',
+    reviewedBy: MOCK_ADDRESSES.auditor,
+    reviewedAt: '2025-12-12T10:00:00Z',
+  },
+  {
+    blobId: 'blob_dec_1210_sales_contract',
+    commitment: 'commitment_dec_1210_sc_wxy901',
+    dataType: 'transaction',
+    size: 37050,
+    uploadedAt: '2025-12-11T09:10:00Z',
+    uploaderAddress: MOCK_ADDRESSES.buyer,
+    metadata: {
+      filename: '1210SalesContract.pdf',
+      mimeType: 'application/pdf',
+      transactionDate: '2025-12-10',
+      updateType: 'transaction',
+    },
+    reviewStatus: 'approved',
+    reviewedBy: MOCK_ADDRESSES.auditor,
+    reviewedAt: '2025-12-12T10:00:00Z',
+  },
+  {
+    blobId: 'blob_dec_1210_sales_invoice',
+    commitment: 'commitment_dec_1210_si_zab234',
+    dataType: 'transaction',
+    size: 36060,
+    uploadedAt: '2025-12-11T09:15:00Z',
+    uploaderAddress: MOCK_ADDRESSES.buyer,
+    metadata: {
+      filename: '1210SalesInvoice.pdf',
+      mimeType: 'application/pdf',
+      transactionDate: '2025-12-10',
+      updateType: 'transaction',
+    },
+    reviewStatus: 'approved',
+    reviewedBy: MOCK_ADDRESSES.auditor,
+    reviewedAt: '2025-12-12T10:00:00Z',
+  },
+  {
+    blobId: 'blob_dec_1210_shipping',
+    commitment: 'commitment_dec_1210_sd_cde567',
+    dataType: 'transaction',
+    size: 35940,
+    uploadedAt: '2025-12-11T09:20:00Z',
+    uploaderAddress: MOCK_ADDRESSES.buyer,
+    metadata: {
+      filename: '1210ShippingDocument.pdf',
+      mimeType: 'application/pdf',
+      transactionDate: '2025-12-10',
+      updateType: 'transaction',
+    },
+    reviewStatus: 'approved',
+    reviewedBy: MOCK_ADDRESSES.auditor,
+    reviewedAt: '2025-12-12T10:00:00Z',
+  },
+  // 1220 Transaction (Dec 20)
+  {
+    blobId: 'blob_dec_1220_cash_receipt',
+    commitment: 'commitment_dec_1220_cr_fgh890',
+    dataType: 'transaction',
+    size: 34925,
+    uploadedAt: '2025-12-21T09:00:00Z',
+    uploaderAddress: MOCK_ADDRESSES.buyer,
+    metadata: {
+      filename: '1220CashReceipt.pdf',
+      mimeType: 'application/pdf',
+      transactionDate: '2025-12-20',
+      updateType: 'transaction',
+    },
+    reviewStatus: 'approved',
+    reviewedBy: MOCK_ADDRESSES.auditor,
+    reviewedAt: '2025-12-22T10:00:00Z',
+  },
+  {
+    blobId: 'blob_dec_1220_journal',
+    commitment: 'commitment_dec_1220_je_ijk123',
+    dataType: 'transaction',
+    size: 572,
+    uploadedAt: '2025-12-21T09:05:00Z',
+    uploaderAddress: MOCK_ADDRESSES.buyer,
+    metadata: {
+      filename: '1220JournalEntry.json',
+      mimeType: 'application/json',
+      transactionDate: '2025-12-20',
+      updateType: 'transaction',
+      revenue: 750000,
+    },
+    reviewStatus: 'approved',
+    reviewedBy: MOCK_ADDRESSES.auditor,
+    reviewedAt: '2025-12-22T10:00:00Z',
+  },
+  {
+    blobId: 'blob_dec_1220_sales_contract',
+    commitment: 'commitment_dec_1220_sc_lmn456',
+    dataType: 'transaction',
+    size: 37110,
+    uploadedAt: '2025-12-21T09:10:00Z',
+    uploaderAddress: MOCK_ADDRESSES.buyer,
+    metadata: {
+      filename: '1220SalesContract.pdf',
+      mimeType: 'application/pdf',
+      transactionDate: '2025-12-20',
+      updateType: 'transaction',
+    },
+    reviewStatus: 'approved',
+    reviewedBy: MOCK_ADDRESSES.auditor,
+    reviewedAt: '2025-12-22T10:00:00Z',
+  },
+  {
+    blobId: 'blob_dec_1220_sales_invoice',
+    commitment: 'commitment_dec_1220_si_opq789',
+    dataType: 'transaction',
+    size: 36130,
+    uploadedAt: '2025-12-21T09:15:00Z',
+    uploaderAddress: MOCK_ADDRESSES.buyer,
+    metadata: {
+      filename: '1220SalesInvoice.pdf',
+      mimeType: 'application/pdf',
+      transactionDate: '2025-12-20',
+      updateType: 'transaction',
+    },
+    reviewStatus: 'approved',
+    reviewedBy: MOCK_ADDRESSES.auditor,
+    reviewedAt: '2025-12-22T10:00:00Z',
+  },
+  {
+    blobId: 'blob_dec_1220_shipping',
+    commitment: 'commitment_dec_1220_sd_rst012',
+    dataType: 'transaction',
+    size: 35990,
+    uploadedAt: '2025-12-21T09:20:00Z',
+    uploaderAddress: MOCK_ADDRESSES.buyer,
+    metadata: {
+      filename: '1220ShippingDocument.pdf',
+      mimeType: 'application/pdf',
+      transactionDate: '2025-12-20',
+      updateType: 'transaction',
+    },
+    reviewStatus: 'approved',
+    reviewedBy: MOCK_ADDRESSES.auditor,
+    reviewedAt: '2025-12-22T10:00:00Z',
+  },
+  // 1231 Expense Report (Dec 31 - Month End)
+  {
+    blobId: 'blob_dec_1231_corporate_overhead',
+    commitment: 'commitment_dec_1231_co_uvw345',
+    dataType: 'expense_report',
+    size: 415,
+    uploadedAt: '2026-01-02T10:00:00Z',
+    uploaderAddress: MOCK_ADDRESSES.buyer,
+    metadata: {
+      filename: 'CorporateOverheadReport_forHeadquarterCostAllocation.json',
+      mimeType: 'application/json',
+      date: '2025-12-31',
+      updateType: 'expense_report',
+      totalOverheadPool: 2050000,
+    },
+    reviewStatus: 'approved',
+    reviewedBy: MOCK_ADDRESSES.auditor,
+    reviewedAt: '2026-01-03T09:00:00Z',
+  },
+  {
+    blobId: 'blob_dec_1231_fixed_assets',
+    commitment: 'commitment_dec_1231_fa_xyz678',
+    dataType: 'expense_report',
+    size: 1395,
+    uploadedAt: '2026-01-02T10:05:00Z',
+    uploaderAddress: MOCK_ADDRESSES.buyer,
+    metadata: {
+      filename: 'FixedAssetsRegister_forDepreciation.json',
+      mimeType: 'application/json',
+      date: '2025-12-31',
+      updateType: 'expense_report',
+    },
+    reviewStatus: 'approved',
+    reviewedBy: MOCK_ADDRESSES.auditor,
+    reviewedAt: '2026-01-03T09:00:00Z',
+  },
+  {
+    blobId: 'blob_dec_1231_payslip_first',
+    commitment: 'commitment_dec_1231_ps1_abc901',
+    dataType: 'expense_report',
+    size: 943,
+    uploadedAt: '2026-01-02T10:10:00Z',
+    uploaderAddress: MOCK_ADDRESSES.buyer,
+    metadata: {
+      filename: 'Payslip_first_forPayrollExpense.json',
+      mimeType: 'application/json',
+      date: '2025-12-31',
+      updateType: 'expense_report',
+      employeeName: 'Mark Smith',
+      grossPay: 3950,
+    },
+    reviewStatus: 'approved',
+    reviewedBy: MOCK_ADDRESSES.auditor,
+    reviewedAt: '2026-01-03T09:00:00Z',
+  },
+  {
+    blobId: 'blob_dec_1231_payslip_second',
+    commitment: 'commitment_dec_1231_ps2_def234',
+    dataType: 'expense_report',
+    size: 931,
+    uploadedAt: '2026-01-02T10:15:00Z',
+    uploaderAddress: MOCK_ADDRESSES.buyer,
+    metadata: {
+      filename: 'Payslip_second_forPayrollExpense.json',
+      mimeType: 'application/json',
+      date: '2025-12-31',
+      updateType: 'expense_report',
+      employeeName: 'Lily Chen',
+      grossPay: 19000,
+    },
+    reviewStatus: 'approved',
+    reviewedBy: MOCK_ADDRESSES.auditor,
+    reviewedAt: '2026-01-03T09:00:00Z',
+  },
+];
+
+// Nov 2025 Period for Deal 2 (In-Progress, Mixed Audit Status)
+const nov2Blobs: WalrusBlobWithAudit[] = [
+  // 1110 Transaction - Mix of approved and pending
+  {
+    blobId: 'blob_nov2_1110_cash_receipt',
+    commitment: 'commitment_nov2_1110_cr_aaa111',
+    dataType: 'transaction',
+    size: 34886,
+    uploadedAt: '2025-11-11T09:00:00Z',
+    uploaderAddress: MOCK_ADDRESSES.buyer,
+    metadata: {
+      filename: '1110CashReceipt.pdf',
+      mimeType: 'application/pdf',
+      transactionDate: '2025-11-10',
+      updateType: 'transaction',
+    },
+    reviewStatus: 'approved',
+    reviewedBy: MOCK_ADDRESSES.auditor,
+    reviewedAt: '2025-11-12T10:00:00Z',
+    reviewNotes: 'Cash receipt verified.',
+  },
+  {
+    blobId: 'blob_nov2_1110_journal',
+    commitment: 'commitment_nov2_1110_je_bbb222',
+    dataType: 'transaction',
+    size: 566,
+    uploadedAt: '2025-11-11T09:05:00Z',
+    uploaderAddress: MOCK_ADDRESSES.buyer,
+    metadata: {
+      filename: '1110JournalEntry.json',
+      mimeType: 'application/json',
+      transactionDate: '2025-11-10',
+      updateType: 'transaction',
+      revenue: 75000,
+    },
+    reviewStatus: 'approved',
+    reviewedBy: MOCK_ADDRESSES.auditor,
+    reviewedAt: '2025-11-12T10:05:00Z',
+    reviewNotes: 'Journal entry approved.',
+  },
+  {
+    blobId: 'blob_nov2_1110_sales_contract',
+    commitment: 'commitment_nov2_1110_sc_ccc333',
+    dataType: 'transaction',
+    size: 37043,
+    uploadedAt: '2025-11-11T09:10:00Z',
+    uploaderAddress: MOCK_ADDRESSES.buyer,
+    metadata: {
+      filename: '1110SalesContract.pdf',
+      mimeType: 'application/pdf',
+      transactionDate: '2025-11-10',
+      updateType: 'transaction',
+    },
+    reviewStatus: 'approved',
+    reviewedBy: MOCK_ADDRESSES.auditor,
+    reviewedAt: '2025-11-12T10:10:00Z',
+    reviewNotes: 'Sales contract approved.',
+  },
+  {
+    blobId: 'blob_nov2_1110_sales_invoice',
+    commitment: 'commitment_nov2_1110_si_ddd444',
+    dataType: 'transaction',
+    size: 36056,
+    uploadedAt: '2025-11-11T09:15:00Z',
+    uploaderAddress: MOCK_ADDRESSES.buyer,
+    metadata: {
+      filename: '1110SalesInvoice.pdf',
+      mimeType: 'application/pdf',
+      transactionDate: '2025-11-10',
+      updateType: 'transaction',
+    },
+    reviewStatus: 'pending',
+  },
+  {
+    blobId: 'blob_nov2_1110_shipping',
+    commitment: 'commitment_nov2_1110_sd_eee555',
+    dataType: 'transaction',
+    size: 35938,
+    uploadedAt: '2025-11-11T09:20:00Z',
+    uploaderAddress: MOCK_ADDRESSES.buyer,
+    metadata: {
+      filename: '1110ShippingDocument.pdf',
+      mimeType: 'application/pdf',
+      transactionDate: '2025-11-10',
+      updateType: 'transaction',
+    },
+    reviewStatus: 'pending',
+  },
+  // 1120 Transaction - Mix of approved and changes_requested
+  {
+    blobId: 'blob_nov2_1120_cash_receipt',
+    commitment: 'commitment_nov2_1120_cr_fff666',
+    dataType: 'transaction',
+    size: 34920,
+    uploadedAt: '2025-11-21T09:00:00Z',
+    uploaderAddress: MOCK_ADDRESSES.buyer,
+    metadata: {
+      filename: '1120CashReceipt.pdf',
+      mimeType: 'application/pdf',
+      transactionDate: '2025-11-20',
+      updateType: 'transaction',
+    },
+    reviewStatus: 'approved',
+    reviewedBy: MOCK_ADDRESSES.auditor,
+    reviewedAt: '2025-11-22T10:00:00Z',
+    reviewNotes: 'Cash receipt verified.',
+  },
+  {
+    blobId: 'blob_nov2_1120_journal',
+    commitment: 'commitment_nov2_1120_je_ggg777',
+    dataType: 'transaction',
+    size: 570,
+    uploadedAt: '2025-11-21T09:05:00Z',
+    uploaderAddress: MOCK_ADDRESSES.buyer,
+    metadata: {
+      filename: '1120JournalEntry.json',
+      mimeType: 'application/json',
+      transactionDate: '2025-11-20',
+      updateType: 'transaction',
+      revenue: 750000,
+    },
+    reviewStatus: 'approved',
+    reviewedBy: MOCK_ADDRESSES.auditor,
+    reviewedAt: '2025-11-22T10:05:00Z',
+    reviewNotes: 'Journal entry approved.',
+  },
+  {
+    blobId: 'blob_nov2_1120_sales_contract',
+    commitment: 'commitment_nov2_1120_sc_hhh888',
+    dataType: 'transaction',
+    size: 37100,
+    uploadedAt: '2025-11-21T09:10:00Z',
+    uploaderAddress: MOCK_ADDRESSES.buyer,
+    metadata: {
+      filename: '1120SalesContract.pdf',
+      mimeType: 'application/pdf',
+      transactionDate: '2025-11-20',
+      updateType: 'transaction',
+    },
+    reviewStatus: 'changes_requested',
+    reviewedBy: MOCK_ADDRESSES.auditor,
+    reviewedAt: '2025-11-22T14:30:00Z',
+    reviewNotes: 'Please provide additional documentation for the contract terms section. The delivery schedule is unclear.',
+  },
+  {
+    blobId: 'blob_nov2_1120_sales_invoice',
+    commitment: 'commitment_nov2_1120_si_iii999',
+    dataType: 'transaction',
+    size: 36120,
+    uploadedAt: '2025-11-21T09:15:00Z',
+    uploaderAddress: MOCK_ADDRESSES.buyer,
+    metadata: {
+      filename: '1120SalesInvoice.pdf',
+      mimeType: 'application/pdf',
+      transactionDate: '2025-11-20',
+      updateType: 'transaction',
+    },
+    reviewStatus: 'changes_requested',
+    reviewedBy: MOCK_ADDRESSES.auditor,
+    reviewedAt: '2025-11-22T14:35:00Z',
+    reviewNotes: 'Invoice amount discrepancy detected. Please verify the tax calculation matches the journal entry.',
+  },
+  {
+    blobId: 'blob_nov2_1120_shipping',
+    commitment: 'commitment_nov2_1120_sd_jjj000',
+    dataType: 'transaction',
+    size: 35980,
+    uploadedAt: '2025-11-21T09:20:00Z',
+    uploaderAddress: MOCK_ADDRESSES.buyer,
+    metadata: {
+      filename: '1120ShippingDocument.pdf',
+      mimeType: 'application/pdf',
+      transactionDate: '2025-11-20',
+      updateType: 'transaction',
+    },
+    reviewStatus: 'changes_requested',
+    reviewedBy: MOCK_ADDRESSES.auditor,
+    reviewedAt: '2025-11-22T14:40:00Z',
+    reviewNotes: 'Shipping document is missing recipient signature. Please upload the signed version.',
+  },
+  // 1130 Expense Report - Mix of approved and pending
+  {
+    blobId: 'blob_nov2_1130_corporate_overhead',
+    commitment: 'commitment_nov2_1130_co_kkk111',
+    dataType: 'expense_report',
+    size: 414,
+    uploadedAt: '2025-12-01T10:00:00Z',
+    uploaderAddress: MOCK_ADDRESSES.buyer,
+    metadata: {
+      filename: 'CorporateOverheadReport_forHeadquarterCostAllocation.json',
+      mimeType: 'application/json',
+      date: '2025-11-30',
+      updateType: 'expense_report',
+      totalOverheadPool: 2050000,
+    },
+    reviewStatus: 'approved',
+    reviewedBy: MOCK_ADDRESSES.auditor,
+    reviewedAt: '2025-12-02T09:00:00Z',
+    reviewNotes: 'Corporate overhead report approved.',
+  },
+  {
+    blobId: 'blob_nov2_1130_fixed_assets',
+    commitment: 'commitment_nov2_1130_fa_lll222',
+    dataType: 'expense_report',
+    size: 1393,
+    uploadedAt: '2025-12-01T10:05:00Z',
+    uploaderAddress: MOCK_ADDRESSES.buyer,
+    metadata: {
+      filename: 'FixedAssetsRegister_forDepreciation.json',
+      mimeType: 'application/json',
+      date: '2025-11-30',
+      updateType: 'expense_report',
+    },
+    reviewStatus: 'approved',
+    reviewedBy: MOCK_ADDRESSES.auditor,
+    reviewedAt: '2025-12-02T09:05:00Z',
+    reviewNotes: 'Fixed assets register approved.',
+  },
+  {
+    blobId: 'blob_nov2_1130_payslip_first',
+    commitment: 'commitment_nov2_1130_ps1_mmm333',
+    dataType: 'expense_report',
+    size: 941,
+    uploadedAt: '2025-12-01T10:10:00Z',
+    uploaderAddress: MOCK_ADDRESSES.buyer,
+    metadata: {
+      filename: 'Payslip_first_forPayrollExpense.json',
+      mimeType: 'application/json',
+      date: '2025-11-30',
+      updateType: 'expense_report',
+      employeeName: 'Mark Smith',
+      grossPay: 3950,
+    },
+    reviewStatus: 'pending',
+  },
+  {
+    blobId: 'blob_nov2_1130_payslip_second',
+    commitment: 'commitment_nov2_1130_ps2_nnn444',
+    dataType: 'expense_report',
+    size: 929,
+    uploadedAt: '2025-12-01T10:15:00Z',
+    uploaderAddress: MOCK_ADDRESSES.buyer,
+    metadata: {
+      filename: 'Payslip_second_forPayrollExpense.json',
+      mimeType: 'application/json',
+      date: '2025-11-30',
+      updateType: 'expense_report',
+      employeeName: 'Lily Chen',
+      grossPay: 19000,
+    },
+    reviewStatus: 'pending',
+  },
+];
+
+// KPI Calculation based on Contract_Spec.md:
+// Revenue = 75,000 + 750,000 = 825,000 (both Nov and Dec)
+// Expenses:
+//   - Depreciation = 7,697.92 (per month)
+//   - Payroll = 22,950 (3,950 + 19,000)
+//   - HQ Allocation = 205,000 (10% of 2,050,000)
+// Net Profit = 825,000 - 7,697.92 - 22,950 - 205,000 = 589,352.08
+
+const MONTHLY_REVENUE = 825000;
+const MONTHLY_DEPRECIATION = 7697.92;
+const MONTHLY_PAYROLL = 22950;
+const MONTHLY_OVERHEAD = 205000;
+const MONTHLY_NET_PROFIT = 589352.08;
+
+// Mock Periods with KPI data
+const mockPeriodsWithKPI: PeriodWithKPI[] = ([
+  {
+    periodId: 'period_nov_2025',
+    name: 'November 2025',
+    startDate: '2025-11-01',
+    endDate: '2025-11-30',
     status: 'settled' as PeriodStatusEnum,
-    walrusBlobs: [
-      {
-        blobId: 'blob_2026_revenue_q1',
-        commitment: 'commitment_hash_q1_abc123',
-        dataType: 'revenue_journal',
-        size: 2048576,
-        uploadedAt: '2026-04-15T10:30:00Z',
-        uploaderAddress: MOCK_ADDRESSES.buyer,
-        metadata: {
-          filename: 'Q1_2026_Revenue.xlsx',
-          mimeType: 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet',
-          encrypted: true,
-          sealPolicyId: 'seal_policy_001',
-        },
-        reviewStatus: 'approved',
-        reviewedBy: MOCK_ADDRESSES.auditor,
-        reviewedAt: '2026-04-20T14:30:00Z',
-        reviewNotes: 'Revenue data verified. All transactions properly documented.',
-      },
-    ],
-    kpiProposal: {
-      kpiType: 'revenue',
-      value: 11300000,
-      unit: 'USD',
-      proposedBy: MOCK_ADDRESSES.buyer,
-      proposedAt: '2027-01-15T10:00:00Z',
-      status: 'approved',
-      calculatedPayout: 2600000,
-      notes: 'Based on audited financial statements',
-      supportingBlobIds: ['blob_2026_revenue_q1', 'blob_2026_revenue_q2'],
+    walrusBlobs: novBlobs,
+    monthlyRevenue: MONTHLY_REVENUE,
+    monthlyExpenses: {
+      depreciation: MONTHLY_DEPRECIATION,
+      payroll: MONTHLY_PAYROLL,
+      overheadAllocation: MONTHLY_OVERHEAD,
     },
-    kpiAttestation: {
-      kpiType: 'revenue',
-      attestedValue: 11300000,
-      unit: 'USD',
-      attestedBy: MOCK_ADDRESSES.auditor,
-      attestedAt: '2027-02-01T14:30:00Z',
-      approved: true,
-      finalPayout: 2600000,
-      notes: 'Verified all revenue journals. Calculations accurate.',
-      verifiedBlobIds: ['blob_2026_revenue_q1', 'blob_2026_revenue_q2'],
-      txHash: '9wqLfZUqP9K3xYz1RnN2BcE4MpX7Ri5L',
+    monthlyNetProfit: MONTHLY_NET_PROFIT,
+    cumulativeNetProfit: MONTHLY_NET_PROFIT,
+    kpiProgress: MONTHLY_NET_PROFIT / 900000, // 0.655 (65.5%)
+    kpiAchieved: false,
+  },
+  {
+    periodId: 'period_dec_2025',
+    name: 'December 2025',
+    startDate: '2025-12-01',
+    endDate: '2025-12-31',
+    status: 'settled' as PeriodStatusEnum,
+    walrusBlobs: decBlobs,
+    monthlyRevenue: MONTHLY_REVENUE,
+    monthlyExpenses: {
+      depreciation: MONTHLY_DEPRECIATION,
+      payroll: MONTHLY_PAYROLL,
+      overheadAllocation: MONTHLY_OVERHEAD,
     },
+    monthlyNetProfit: MONTHLY_NET_PROFIT,
+    cumulativeNetProfit: MONTHLY_NET_PROFIT * 2, // 1,178,704.16
+    kpiProgress: (MONTHLY_NET_PROFIT * 2) / 900000, // 1.309 (130.9%)
+    kpiAchieved: true,
     settlement: {
       settled: true,
-      settledAt: '2027-02-10T09:00:00Z',
-      payoutAmount: 2600000,
-      txHash: '8vqKfZTqP9J3xYz1RmN2BcD4LpW7Qh5K',
+      settledAt: '2026-01-05T10:00:00Z',
+      payoutAmount: 30000000,
+      txHash: 'KpI8rEdFgHnM2xYz1RnN2BcE4MpX7Ri5L',
       recipient: MOCK_ADDRESSES.seller,
     },
   },
+]) as any;
+
+// Mock Periods for Deal 2 (November only, showing audit workflow)
+const mockPeriodsWithKPI_Deal2: PeriodWithKPI[] = ([
   {
-    periodId: 'period_2027',
-    name: '2027 Fiscal Year',
-    startDate: '2027-01-01',
-    endDate: '2027-12-31',
-    kpiTypes: mockKPITypes,
-    formula: mockFormula,
-    status: 'kpi_attested' as PeriodStatusEnum,
-    walrusBlobs: [
-      {
-        blobId: 'blob_2027_revenue_q1',
-        commitment: 'commitment_hash_2027_q1',
-        dataType: 'revenue_journal',
-        size: 2156789,
-        uploadedAt: '2027-04-10T09:15:00Z',
-        uploaderAddress: MOCK_ADDRESSES.buyer,
-        metadata: {
-          filename: 'Q1_2027_Revenue.xlsx',
-          mimeType: 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet',
-          encrypted: true,
-          sealPolicyId: 'seal_policy_001',
-        },
-        reviewStatus: 'approved',
-        reviewedBy: MOCK_ADDRESSES.auditor,
-        reviewedAt: '2027-04-15T11:20:00Z',
-        reviewNotes: 'Q1 revenue verified.',
-      },
-      {
-        blobId: 'blob_2027_revenue_q2',
-        commitment: 'commitment_hash_2027_q2',
-        dataType: 'revenue_journal',
-        size: 2234567,
-        uploadedAt: '2027-07-12T10:00:00Z',
-        uploaderAddress: MOCK_ADDRESSES.buyer,
-        metadata: {
-          filename: 'Q2_2027_Revenue.xlsx',
-          mimeType: 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet',
-          encrypted: true,
-          sealPolicyId: 'seal_policy_001',
-        },
-        reviewStatus: 'changes_requested',
-        reviewedBy: MOCK_ADDRESSES.auditor,
-        reviewedAt: '2027-07-18T14:30:00Z',
-        reviewNotes: 'Please provide supporting invoices for the revenue entries in June. Some transactions lack proper documentation.',
-      },
-    ],
-  },
-  {
-    periodId: 'period_2028',
-    name: '2028 Fiscal Year',
-    startDate: '2028-01-01',
-    endDate: '2028-12-31',
-    kpiTypes: mockKPITypes,
-    formula: mockFormula,
-    status: 'pending' as PeriodStatusEnum,
-    walrusBlobs: [
-      {
-        blobId: 'blob_2028_revenue_q1',
-        commitment: 'commitment_hash_2028_q1',
-        dataType: 'revenue_journal',
-        size: 1987654,
-        uploadedAt: '2028-04-05T08:30:00Z',
-        uploaderAddress: MOCK_ADDRESSES.buyer,
-        metadata: {
-          filename: 'Q1_2028_Revenue.xlsx',
-          mimeType: 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet',
-          encrypted: true,
-          sealPolicyId: 'seal_policy_001',
-        },
-        reviewStatus: 'pending',
-      },
-      {
-        blobId: 'blob_2028_ebitda',
-        commitment: 'commitment_hash_2028_ebitda',
-        dataType: 'ebitda_report',
-        size: 1654321,
-        uploadedAt: '2028-04-08T14:00:00Z',
-        uploaderAddress: MOCK_ADDRESSES.buyer,
-        metadata: {
-          filename: 'Q1_2028_EBITDA.pdf',
-          mimeType: 'application/pdf',
-          encrypted: true,
-          sealPolicyId: 'seal_policy_001',
-        },
-        reviewStatus: 'pending',
-      },
-    ],
+    periodId: 'period_nov_2025_deal2',
+    name: 'November 2025',
+    startDate: '2025-11-01',
+    endDate: '2025-11-30',
+    status: 'data_collection' as PeriodStatusEnum,
+    walrusBlobs: nov2Blobs,
+    monthlyRevenue: MONTHLY_REVENUE,
+    monthlyExpenses: {
+      depreciation: MONTHLY_DEPRECIATION,
+      payroll: MONTHLY_PAYROLL,
+      overheadAllocation: MONTHLY_OVERHEAD,
+    },
+    monthlyNetProfit: MONTHLY_NET_PROFIT,
+    cumulativeNetProfit: MONTHLY_NET_PROFIT,
+    kpiProgress: MONTHLY_NET_PROFIT / 900000, // 0.655 (65.5%)
+    kpiAchieved: false,
   },
 ]) as any;
 
@@ -226,14 +903,14 @@ export type DealWithExtendedFields = Deal & {
   headquarterExpenseAllocationPercentage?: number;
 };
 
-// Mock Deals
+// Single Mock Deal
 export const mockDeals: DealWithExtendedFields[] = [
   {
     dealId: '0x1234567890abcdef1234567890abcdef1234567890abcdef1234567890abcdef',
-    name: 'BuyYou Inc. & Global Tech Solutions Inc. Asset Purchase',
+    name: 'BuyYou Inc. & Global Tech Solutions Inc. Aquirement',
     buyerName: 'BuyYou Inc.',
     sellerName: 'Global Tech Solutions Inc.',
-    closingDate: new Date('2025-12-31'),
+    agreementDate: new Date('2025-11-3'),
     currency: 'USD',
     buyer: MOCK_ADDRESSES.buyer,
     seller: MOCK_ADDRESSES.seller,
@@ -243,49 +920,38 @@ export const mockDeals: DealWithExtendedFields[] = [
     kpiTargetAmount: 900000,
     contingentConsiderationAmount: 30000000,
     headquarterExpenseAllocationPercentage: 0.10,
-    periods: mockPeriods,
+    periods: mockPeriodsWithKPI,
     metadata: {
       industry: 'Technology',
-      dealSize: '50M USD',
-      notes: 'Standard SaaS acquisition with 3-year earn-out period',
+      dealSize: '$30M USD',
+      notes: 'KPI achieved in Dec 2025 - Contingent consideration paid',
     },
-    createdAt: new Date('2025-11-16T10:00:00Z'),
-    updatedAt: new Date('2025-11-16T15:30:00Z'),
+    createdAt: new Date('2025-10-15T10:00:00Z'),
+    updatedAt: new Date('2026-01-05T10:00:00Z'),
   },
   {
     dealId: '0xabcdef1234567890abcdef1234567890abcdef1234567890abcdef1234567890',
-    name: 'Acquisition of DataFlow Systems',
+    name: 'BuyYou Inc. & Global Tech Solutions Inc. Asset Purchase (Period - Nov.)',
     buyerName: 'BuyYou Inc.',
-    sellerName: 'DataFlow Systems LLC',
-    closingDate: new Date('2026-03-15'),
+    sellerName: 'Global Tech Solutions Inc.',
+    agreementDate: new Date('2025-11-3'),
     currency: 'USD',
     buyer: MOCK_ADDRESSES.buyer,
     seller: MOCK_ADDRESSES.seller,
     auditor: MOCK_ADDRESSES.auditor,
     status: 'active' as DealStatusEnum,
-    earnoutPeriodYears: 2,
-    kpiTargetAmount: 500000,
-    contingentConsiderationAmount: 15000000,
-    headquarterExpenseAllocationPercentage: 0.08,
-    periods: ([
-      {
-        periodId: 'period_2026',
-        name: '2026 Period',
-        startDate: '2026-04-01',
-        endDate: '2027-03-31',
-        kpiTypes: mockKPITypes,
-        formula: mockFormula,
-        status: 'data_collection' as PeriodStatusEnum,
-        walrusBlobs: [],
-      },
-    ]) as any,
+    earnoutPeriodYears: 3,
+    kpiTargetAmount: 900000,
+    contingentConsiderationAmount: 30000000,
+    headquarterExpenseAllocationPercentage: 0.10,
+    periods: mockPeriodsWithKPI_Deal2,
     metadata: {
-      industry: 'Data Analytics',
-      dealSize: '30M USD',
-      notes: '2-year earn-out with lower overhead allocation',
+      industry: 'Technology',
+      dealSize: '$30M USD',
+      notes: 'In-progress deal showing audit workflow in November 2025',
     },
-    createdAt: new Date('2026-01-10T08:00:00Z'),
-    updatedAt: new Date('2026-01-10T08:00:00Z'),
+    createdAt: new Date('2025-10-15T10:00:00Z'),
+    updatedAt: new Date('2025-12-01T10:15:00Z'),
   },
 ];
 
@@ -293,7 +959,7 @@ export const mockDeals: DealWithExtendedFields[] = [
 export const mockDealSummaries: DealSummary[] = mockDeals.map((deal) => ({
   dealId: deal.dealId,
   name: deal.name,
-  closingDate: deal.closingDate as any,
+  agreementDate: deal.agreementDate as any,
   currency: deal.currency,
   status: deal.status,
   userRole: 'buyer',
@@ -307,143 +973,15 @@ export const mockDashboardResponse: DashboardResponse = ({
   dealInfo: {
     dealId: mockDeals[0].dealId,
     name: mockDeals[0].name,
-    closingDate: mockDeals[0].closingDate,
+    buyerName: mockDeals[0].buyerName,
+    sellerName: mockDeals[0].sellerName,
+    agreementDate: mockDeals[0].agreementDate,
     currency: mockDeals[0].currency,
     status: mockDeals[0].status,
-    roles: {
-      buyer: MOCK_ADDRESSES.buyer,
-      seller: MOCK_ADDRESSES.seller,
-      auditor: MOCK_ADDRESSES.auditor,
-    },
-    userRole: 'seller',
-  },
-  periodsSummary: [
-    {
-      periodId: 'period_2026',
-      name: '2026 Fiscal Year',
-      dateRange: {
-        start: '2026-01-01',
-        end: '2026-12-31',
-      },
-      dataUploadProgress: {
-        blobCount: 8,
-        lastUploadAt: '2026-12-20T14:30:00Z',
-        completeness: 100,
-      },
-      kpiStatus: 'approved',
-      kpiValue: 11300000,
-      settlementStatus: 'settled',
-      settlementAmount: 2600000,
-      nextAction: {
-        action: 'View Settlement Details',
-        actor: 'seller',
-        deadline: '2027-03-01',
-      },
-    },
-    {
-      periodId: 'period_2027',
-      name: '2027 Fiscal Year',
-      dateRange: {
-        start: '2027-01-01',
-        end: '2027-12-31',
-      },
-      dataUploadProgress: {
-        blobCount: 12,
-        lastUploadAt: '2027-12-28T16:00:00Z',
-        completeness: 95,
-      },
-      kpiStatus: 'approved',
-      kpiValue: 12500000,
-      settlementStatus: 'pending',
-      nextAction: {
-        action: 'Execute Settlement',
-        actor: 'buyer',
-        deadline: '2028-02-15',
-      },
-    },
-    {
-      periodId: 'period_2028',
-      name: '2028 Fiscal Year',
-      dateRange: {
-        start: '2028-01-01',
-        end: '2028-12-31',
-      },
-      dataUploadProgress: {
-        blobCount: 0,
-        completeness: 0,
-      },
-      kpiStatus: 'not_proposed',
-      settlementStatus: 'not_settled',
-      nextAction: {
-        action: 'Upload Financial Documents',
-        actor: 'seller',
-        deadline: '2029-01-31',
-      },
-    },
-  ],
-  recentEvents: [
-    {
-      type: 'settlement',
-      timestamp: '2027-02-10T09:00:00Z',
-      actor: MOCK_ADDRESSES.buyer,
-      actorRole: 'buyer',
-      description: 'Settlement executed for period_2026: $2,600,000 paid to seller',
-      txHash: '8vqKfZTqP9J3xYz1RmN2BcD4LpW7Qh5K',
-      metadata: {
-        periodId: 'period_2026',
-        amount: 2600000,
-      },
-    },
-    {
-      type: 'kpi_attested',
-      timestamp: '2027-02-01T14:30:00Z',
-      actor: MOCK_ADDRESSES.auditor,
-      actorRole: 'auditor',
-      description: 'KPI attested for period_2026: Revenue = $11,300,000 (Approved)',
-      txHash: '9wqLfZUqP9K3xYz1RnN2BcE4MpX7Ri5L',
-      metadata: {
-        periodId: 'period_2026',
-        kpiType: 'revenue',
-        value: 11300000,
-      },
-    },
-    {
-      type: 'data_upload',
-      timestamp: '2026-12-20T14:30:00Z',
-      actor: MOCK_ADDRESSES.buyer,
-      actorRole: 'buyer',
-      description: 'Uploaded revenue_journal for period_2026',
-      metadata: {
-        periodId: 'period_2026',
-        blobId: 'blob_2026_revenue_q4',
-        dataType: 'revenue_journal',
-      },
-    },
-  ],
-  healthMetrics: {
-    overallProgress: 66.7,
-    pendingActions: 2,
-    nextDeadline: '2028-02-15',
-    dataCompletenessScore: 85.5,
-    risksDetected: [
-      {
-        severity: 'medium',
-        category: 'Missing Data',
-        description: 'Period 2028 has no data uploads yet',
-        periodId: 'period_2028',
-      },
-    ],
-  },
-}) as any;
-
-// Mock Dashboard Response for Draft Deal
-export const mockDraftDealDashboard: DashboardResponse = ({
-  dealInfo: {
-    dealId: '0xdraft123456789abcdef1234567890abcdef1234567890abcdef1234567890ab',
-    name: 'New Deal - CloudTech Acquisition',
-    closingDate: new Date('2026-06-01'),
-    currency: 'USD',
-    status: 'draft',
+    earnoutPeriodYears: mockDeals[0].earnoutPeriodYears,
+    kpiTargetAmount: mockDeals[0].kpiTargetAmount,
+    contingentConsiderationAmount: mockDeals[0].contingentConsiderationAmount,
+    headquarterExpenseAllocationPercentage: mockDeals[0].headquarterExpenseAllocationPercentage,
     roles: {
       buyer: MOCK_ADDRESSES.buyer,
       seller: MOCK_ADDRESSES.seller,
@@ -451,113 +989,191 @@ export const mockDraftDealDashboard: DashboardResponse = ({
     },
     userRole: 'buyer',
   },
-  periodsSummary: [],
+  periodsSummary: [
+    {
+      periodId: 'period_nov_2025',
+      name: 'November 2025',
+      dateRange: {
+        start: '2025-11-01',
+        end: '2025-11-30',
+      },
+      dataUploadProgress: {
+        blobCount: 14,
+        lastUploadAt: '2025-12-01T10:15:00Z',
+        completeness: 100,
+      },
+      kpiStatus: 'approved',
+      kpiValue: MONTHLY_NET_PROFIT,
+      settlementStatus: 'settled',
+    },
+    {
+      periodId: 'period_dec_2025',
+      name: 'December 2025',
+      dateRange: {
+        start: '2025-12-01',
+        end: '2025-12-31',
+      },
+      dataUploadProgress: {
+        blobCount: 14,
+        lastUploadAt: '2026-01-02T10:15:00Z',
+        completeness: 100,
+      },
+      kpiStatus: 'approved',
+      kpiValue: MONTHLY_NET_PROFIT * 2,
+      settlementStatus: 'settled',
+      settlementAmount: 30000000,
+    },
+  ],
   recentEvents: [
     {
-      type: 'deal_created',
-      timestamp: '2025-11-17T10:00:00Z',
+      type: 'settlement',
+      timestamp: '2026-01-05T10:00:00Z',
       actor: MOCK_ADDRESSES.buyer,
       actorRole: 'buyer',
-      description: 'Deal created: New Deal - CloudTech Acquisition',
+      description: 'KPI Target Achieved! Settlement executed: $30,000,000 paid to seller',
+      txHash: 'KpI8rEdFgHnM2xYz1RnN2BcE4MpX7Ri5L',
       metadata: {
-        dealId: '0xdraft123456789abcdef1234567890abcdef1234567890abcdef1234567890ab',
+        periodId: 'period_dec_2025',
+        amount: 30000000,
+        cumulativeNetProfit: MONTHLY_NET_PROFIT * 2,
+        kpiTarget: 900000,
+      },
+    },
+    {
+      type: 'data_upload',
+      timestamp: '2026-01-02T10:15:00Z',
+      actor: MOCK_ADDRESSES.buyer,
+      actorRole: 'buyer',
+      description: 'Uploaded expense_report for period_dec_2025',
+      metadata: {
+        periodId: 'period_dec_2025',
+        blobId: 'blob_dec_1231_payslip_second',
+        dataType: 'expense_report',
+      },
+    },
+    {
+      type: 'data_upload',
+      timestamp: '2025-12-01T10:15:00Z',
+      actor: MOCK_ADDRESSES.buyer,
+      actorRole: 'buyer',
+      description: 'Uploaded expense_report for period_nov_2025',
+      metadata: {
+        periodId: 'period_nov_2025',
+        blobId: 'blob_nov_1130_payslip_second',
+        dataType: 'expense_report',
       },
     },
   ],
   healthMetrics: {
-    overallProgress: 0,
-    pendingActions: 1,
+    overallProgress: 100,
+    pendingActions: 0,
     nextDeadline: undefined,
-    dataCompletenessScore: 0,
-    risksDetected: [
-      {
-        severity: 'high',
-        category: 'Configuration',
-        description: 'Deal parameters not yet configured',
-      },
-    ],
+    dataCompletenessScore: 100,
+    risksDetected: [],
   },
 }) as any;
 
 // Helper to get dashboard by dealId and role
 export function getDashboardByDealId(dealId: string, role: 'buyer' | 'seller' | 'auditor' = 'buyer'): DashboardResponse {
-  if (dealId === '0xdraft123456789abcdef1234567890abcdef1234567890abcdef1234567890ab') {
-    return {
-      ...mockDraftDealDashboard,
-      dealInfo: {
-        ...mockDraftDealDashboard.dealInfo,
-        userRole: role,
-      },
-    };
-  }
-
-  // Default: return first deal's dashboard with updated dealId and role
   const deal = mockDeals.find(d => d.dealId === dealId) || mockDeals[0];
+  const periods = (deal.periods || []) as PeriodWithKPI[];
 
-  // Customize period summaries based on role
-  const basePeriods = mockDashboardResponse.periodsSummary;
-  const rolePeriods = basePeriods.map(period => {
-    // Clone the period
-    const p = { ...period };
+  // Generate periodsSummary dynamically based on the deal's periods
+  const periodsSummary = periods.map(period => {
+    const blobCount = period.walrusBlobs?.length || 0;
+    const lastBlob = period.walrusBlobs?.[period.walrusBlobs.length - 1];
 
-    // Customize nextAction based on period and role
-    if (period.periodId === 'period_2026') {
-      // Period 2026: Settled - no action needed
-      p.nextAction = undefined;
-    } else if (period.periodId === 'period_2027') {
-      // Period 2027: KPI approved, awaiting settlement
-      if (role === 'buyer') {
-        p.nextAction = {
-          action: 'Execute Settlement',
-          actor: 'buyer',
-          deadline: '2028-02-15',
-        } as any;
-      } else if (role === 'seller') {
-        p.nextAction = {
-          action: 'Awaiting Settlement Payment',
-          actor: 'buyer',
-          deadline: '2028-02-15',
-        } as any;
-      } else {
-        p.nextAction = undefined;
-      }
-    } else if (period.periodId === 'period_2028') {
-      // Period 2028: Pending, needs data upload and attestation
-      if (role === 'seller') {
-        p.nextAction = {
-          action: 'Upload Financial Documents',
-          actor: 'seller',
-          deadline: '2029-01-31',
-        } as any;
-      } else if (role === 'auditor') {
-        p.nextAction = {
-          action: 'Awaiting Data Upload',
-          actor: 'seller',
-          deadline: '2029-01-31',
-        } as any;
-      } else {
-        p.nextAction = {
-          action: 'Awaiting Data Upload',
-          actor: 'seller',
-          deadline: '2029-01-31',
-        } as any;
-      }
-    }
-
-    return p;
+    return {
+      periodId: period.periodId,
+      name: period.name,
+      dateRange: {
+        start: period.startDate,
+        end: period.endDate,
+      },
+      dataUploadProgress: {
+        blobCount: blobCount,
+        lastUploadAt: lastBlob?.uploadedAt || period.startDate,
+        completeness: 100,
+      },
+      kpiStatus: period.kpiAchieved ? 'approved' : (period.status === 'settled' ? 'approved' : 'pending'),
+      kpiValue: period.cumulativeNetProfit || 0,
+      settlementStatus: period.status,
+      settlementAmount: period.settlement?.payoutAmount,
+    };
   });
 
+  // Generate recent events based on the deal
+  const recentEvents = [];
+
+  // Add settlement events for settled periods
+  for (const period of periods) {
+    if (period.settlement?.settled) {
+      recentEvents.push({
+        type: 'settlement' as const,
+        timestamp: period.settlement.settledAt || period.endDate,
+        actor: deal.buyer,
+        actorRole: 'buyer' as const,
+        description: `KPI Target ${period.kpiAchieved ? 'Achieved' : 'Met'}! Settlement executed: $${(period.settlement.payoutAmount || 0).toLocaleString()}`,
+        txHash: period.settlement.txHash || '',
+        metadata: {
+          periodId: period.periodId,
+          amount: period.settlement.payoutAmount || 0,
+          cumulativeNetProfit: period.cumulativeNetProfit || 0,
+          kpiTarget: deal.kpiTargetAmount || 0,
+        },
+      });
+    }
+
+    // Add data upload events
+    if (period.walrusBlobs && period.walrusBlobs.length > 0) {
+      const lastBlob = period.walrusBlobs[period.walrusBlobs.length - 1];
+      recentEvents.push({
+        type: 'data_upload' as const,
+        timestamp: lastBlob.uploadedAt,
+        actor: lastBlob.uploaderAddress,
+        actorRole: 'buyer' as const,
+        description: `Financial data uploaded for ${period.name}`,
+        metadata: {
+          periodId: period.periodId,
+          blobCount: period.walrusBlobs.length,
+        },
+      });
+    }
+  }
+
+  // Sort events by timestamp descending
+  recentEvents.sort((a, b) => new Date(b.timestamp).getTime() - new Date(a.timestamp).getTime());
+
   return {
-    ...mockDashboardResponse,
     dealInfo: {
-      ...mockDashboardResponse.dealInfo,
       dealId: deal.dealId,
       name: deal.name,
-      closingDate: deal.closingDate,
+      buyerName: deal.buyerName,
+      sellerName: deal.sellerName,
+      agreementDate: deal.agreementDate,
       currency: deal.currency,
       status: deal.status,
+      earnoutPeriodYears: deal.earnoutPeriodYears,
+      kpiTargetAmount: deal.kpiTargetAmount,
+      contingentConsiderationAmount: deal.contingentConsiderationAmount,
+      headquarterExpenseAllocationPercentage: deal.headquarterExpenseAllocationPercentage,
+      roles: {
+        buyer: deal.buyer,
+        seller: deal.seller,
+        auditor: deal.auditor,
+      },
       userRole: role,
     },
-    periodsSummary: rolePeriods,
+    periodsSummary,
+    recentEvents: recentEvents.slice(0, 10), // Only show last 10 events
+    healthMetrics: {
+      overallProgress: periods.length > 0
+        ? (periods.filter(p => p.status === 'settled').length / periods.length) * 100
+        : 0,
+      pendingActions: periods.filter(p => p.status !== 'settled').length,
+      nextDeadline: undefined,
+      dataCompletenessScore: 100,
+      risksDetected: [],
+    },
   } as any;
 }

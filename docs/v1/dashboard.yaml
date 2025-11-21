@@ -89,7 +89,7 @@ paths:
                 dealInfo:
                   dealId: "0x1234567890abcdef1234567890abcdef1234567890abcdef1234567890abcdef"
                   name: "Acquisition of TechCorp Inc."
-                  closingDate: "2025-12-31"
+                  agreementDate: "2025-12-31"
                   currency: "USD"
                   status: "active"
                   roles:

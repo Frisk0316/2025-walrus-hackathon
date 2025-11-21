@@ -5,7 +5,7 @@ components:
       required:
         - dealId
         - name
-        - closingDate
+        - agreementDate
         - currency
         - buyer
         - status
@@ -24,7 +24,7 @@ components:
           maxLength: 200
           description: Human-readable deal name
           example: "Acquisition of TechCorp Inc."
-        closingDate:
+        agreementDate:
           type: string
           format: date
           description: Deal closing date (ISO 8601 date format)
@@ -87,7 +87,7 @@ components:
       type: object
       required:
         - name
-        - closingDate
+        - agreementDate
         - currency
         - buyerAddress
       properties:
@@ -97,7 +97,7 @@ components:
           maxLength: 200
           description: Deal name
           example: "Acquisition of TechCorp Inc."
-        closingDate:
+        agreementDate:
           type: string
           format: date
           description: Deal closing date
@@ -187,7 +187,7 @@ components:
           type: string
           description: Deal name
           example: "Acquisition of TechCorp Inc."
-        closingDate:
+        agreementDate:
           type: string
           format: date
           example: "2025-12-31"

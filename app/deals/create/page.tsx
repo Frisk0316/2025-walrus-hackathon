@@ -45,7 +45,6 @@ export default function CreateDealPage() {
     register,
     handleSubmit,
     formState: { errors },
-    setValue,
   } = useForm<CreateDealFormData>({
     resolver: zodResolver(createDealSchema),
     defaultValues: {

@@ -80,7 +80,7 @@ export function useCreateDeal() {
       const newDeal: Deal = {
         dealId: `0x${Math.random().toString(16).substring(2).padEnd(64, '0')}`,
         name: request.name,
-        closingDate: request.closingDate as any,
+        agreementDate: request.agreementDate as any,
         currency: request.currency,
         buyer: request.buyerAddress,
         seller: request.sellerAddress,
@@ -98,7 +98,7 @@ export function useCreateDeal() {
       const dealSummary: DealSummary = {
         dealId: newDeal.dealId,
         name: newDeal.name,
-        closingDate: newDeal.closingDate as any,
+        agreementDate: newDeal.agreementDate as any,
         currency: newDeal.currency,
         status: newDeal.status,
         userRole: 'buyer',

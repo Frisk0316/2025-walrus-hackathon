@@ -18,10 +18,21 @@ import {
 import { fromHex } from '@mysten/sui/utils';
 import { toast } from 'sonner';
 
-interface CreateDealOptions {
+/**
+ * The data structure expected by the backend API for creating a deal.
+ * This should match the fields being destructured in `deals/route.ts`.
+ */
+interface DealDataForBackend {
   name: string;
   sellerAddress: string;
   auditorAddress: string;
+  kpiTarget: number;
+  agreementBlobId: string;
+  assets: Array<{ asset_id: string; original_cost: number; estimated_useful_life_months: number; }>;
+}
+
+interface CreateDealOptions {
+  dealData: DealDataForBackend;
   onSuccess?: (dealId: string) => void;
   onError?: (error: Error) => void;
 }
@@ -42,7 +53,7 @@ export function useCreateDeal(): UseCreateDealReturn {
 
   const createDeal = useCallback(
     async (options: CreateDealOptions) => {
-      const { name, sellerAddress, auditorAddress, onSuccess, onError } = options;
+      const { dealData, onSuccess, onError } = options;
 
       if (!currentAccount?.address) {
         const err = new Error('Wallet not connected');
@@ -77,12 +88,8 @@ export function useCreateDeal(): UseCreateDealReturn {
             'X-Sui-Signature': signature,
             'X-Sui-Signature-Message': timestamp,
           },
-          body: JSON.stringify({
-            name,
-            sellerAddress,
-            auditorAddress,
-            buyerAddress: currentAccount.address,
-          }),
+          // --- FIX: Send the complete dealData object to the backend ---
+          body: JSON.stringify(dealData),
         });
 
         if (!response.ok) {

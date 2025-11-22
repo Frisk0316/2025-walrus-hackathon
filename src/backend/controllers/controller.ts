@@ -272,6 +272,13 @@ export class WalrusController {
       // Upload to Walrus
       const uploadResult = await walrusService.upload(dataToUpload, metadata);
 
+      // If dealId is a placeholder, skip on-chain registration and return early.
+      // This is for initial uploads like the M&A agreement before the deal exists.
+      if (!dealId.startsWith('0x')) {
+        console.log(`Placeholder dealId detected ('${dealId}'). Skipping on-chain registration.`);
+        return NextResponse.json({ blobId: uploadResult.blobId, size: uploadResult.size }, { status: 200 });
+      }
+
       // Build transaction bytes for on-chain registration (includes audit record creation)
       const { txBytes, includesAuditRecord } = await this.buildRegisterBlobTxBytes(
         dealId,

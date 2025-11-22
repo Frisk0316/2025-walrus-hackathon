@@ -113,7 +113,17 @@ export async function POST(request: NextRequest) {
 
     // Parse request body
     const body = await request.json();
-    const { name, sellerAddress, auditorAddress, buyerAddress } = body;
+    // --- FIX: Destructure all required parameters from the request body ---
+    const {
+      name,
+      buyerName, // Added
+      sellerName, // Added
+      sellerAddress,
+      auditorAddress,
+      kpiTarget,
+      agreementBlobId,
+      assets = [], // Default to an empty array to prevent errors if not provided
+    } = body;
 
     // Validate required fields
     if (!name || typeof name !== 'string' || name.trim().length === 0) {
@@ -153,7 +163,7 @@ export async function POST(request: NextRequest) {
     }
 
     // Buyer address should match the authenticated user
-    const effectiveBuyerAddress = buyerAddress || userAddress;
+    const effectiveBuyerAddress = userAddress; // Always use the authenticated user's address
     if (effectiveBuyerAddress !== userAddress) {
       return NextResponse.json(
         {
@@ -170,7 +180,11 @@ export async function POST(request: NextRequest) {
       name.trim(),
       sellerAddress,
       auditorAddress,
-      effectiveBuyerAddress
+      effectiveBuyerAddress,
+      // --- FIX: Pass the new parameters to the service layer ---
+      kpiTarget,
+      agreementBlobId,
+      assets
     );
 
     // Return transaction for frontend to sign
@@ -178,6 +192,8 @@ export async function POST(request: NextRequest) {
       {
         deal: {
           name: name.trim(),
+          buyerName,
+          sellerName,
           buyer: effectiveBuyerAddress,
           seller: sellerAddress,
           auditor: auditorAddress,

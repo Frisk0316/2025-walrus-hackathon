@@ -443,13 +443,24 @@ export class SuiService {
    * @param sellerAddress - Seller's Sui address
    * @param auditorAddress - Auditor's Sui address
    * @param buyerAddress - Buyer's Sui address (transaction sender)
+   * @param kpiTarget - The target net profit amount for the earn-out
+   * @param agreementBlobId - The Walrus blob ID of the M&A agreement PDF
+   * @param assets - An array of asset objects to be registered on-chain
    * @returns Object with hex-encoded transaction bytes and estimated gas
    */
   async buildCreateDealTransaction(
     name: string,
     sellerAddress: string,
     auditorAddress: string,
-    buyerAddress: string
+    buyerAddress: string,
+    // --- New parameters to match the updated Move contract ---
+    kpiTarget: number,
+    agreementBlobId: string,
+    assets: Array<{
+      asset_id: string;
+      original_cost: number;
+      estimated_useful_life_months: number;
+    }>
   ): Promise<{ txBytes: string; estimatedGas: number }> {
     try {
       if (!config.earnout.packageId) {
@@ -467,12 +478,24 @@ export class SuiService {
 
       const tx = new Transaction();
 
+      // Prepare asset vectors for the Move call
+      // The frontend sends an array of objects, but the contract expects three separate vectors.
+      const asset_ids = assets.map(a => a.asset_id);
+      const asset_costs = assets.map(a => a.original_cost);
+      const asset_lives = assets.map(a => a.estimated_useful_life_months);
+
       // Call earnout::create_deal
       // Function signature from Move:
       // public fun create_deal(
       //   name: String,
       //   seller: address,
       //   auditor: address,
+      //   kpi_target: u64,
+      //   agreement_blob_id: String,
+      //   asset_ids: vector<String>,
+      //   asset_costs: vector<u64>,
+      //   asset_lives: vector<u64>,
+      //   clock: &Clock,
       //   ctx: &mut TxContext
       // )
       tx.moveCall({
@@ -481,6 +504,13 @@ export class SuiService {
           tx.pure.string(name),
           tx.pure.address(sellerAddress),
           tx.pure.address(auditorAddress),
+          // --- Pass the new arguments ---
+          tx.pure.u64(kpiTarget),
+          tx.pure.string(agreementBlobId),
+          tx.pure.vector('string', asset_ids),
+          tx.pure.vector('u64', asset_costs),
+          tx.pure.vector('u64', asset_lives),
+          tx.object('0x6'), // Pass the shared Clock object ID
         ],
       });
 
@@ -522,9 +552,21 @@ export class SuiService {
     buyer: string;
     seller: string;
     auditor: string;
+    kpiTarget: string;
     parametersLocked: boolean;
     whitelistId: string;
     periods: unknown[];
+    assets: Array<{
+      asset_id: string;
+      original_cost: string;
+      estimated_useful_life_months: string;
+    }>;
+    agreementBlob: {
+      blob_id: string;
+      data_type: string;
+      uploaded_at: string;
+      uploader: string;
+    };
   } | null> {
     try {
       if (debugConfig.sui) {
@@ -556,9 +598,22 @@ export class SuiService {
         buyer: fields.buyer as string || '',
         seller: fields.seller as string || '',
         auditor: fields.auditor as string || '',
+        // --- FIX: Extract all new fields from the on-chain object ---
+        kpiTarget: (fields.kpi_target as string) || '0',
         parametersLocked: fields.parameters_locked as boolean || false,
         whitelistId: (fields.whitelist_id as string) || '',
         periods: (fields.periods as unknown[]) || [],
+        assets: ((fields.assets as any[]) || []).map(asset => ({
+          asset_id: asset.fields.asset_id,
+          original_cost: asset.fields.original_cost,
+          estimated_useful_life_months: asset.fields.estimated_useful_life_months,
+        })),
+        agreementBlob: {
+          blob_id: (fields.agreement_blob as any)?.fields?.blob_id || '',
+          data_type: (fields.agreement_blob as any)?.fields?.data_type || '',
+          uploaded_at: (fields.agreement_blob as any)?.fields?.uploaded_at || '',
+          uploader: (fields.agreement_blob as any)?.fields?.uploader || '',
+        },
       };
     } catch (error) {
       console.error('Failed to query deal:', error);

@@ -18,6 +18,7 @@ import { toast } from 'sonner';
 import { ArrowLeft, Building2, Users, DollarSign, FileText, Upload, X, Package, Plus, Trash2, Wallet, Loader2 } from 'lucide-react';
 import Link from 'next/link';
 import type { AssetReference } from '@/src/shared/types/asset';
+import { useUploadFile } from '@/src/frontend/hooks/useUploadFile'; // Import the upload hook
 
 const createDealSchema = z.object({
   // Basic Information
@@ -52,6 +53,7 @@ export default function CreateDealPage() {
   const currentAccount = useCurrentAccount();
   const { createDeal, isCreating } = useCreateDeal();
   const [uploadedFile, setUploadedFile] = useState<File | null>(null);
+  const { uploadFile, isUploading } = useUploadFile(); // Use the upload hook
 
   const {
     register,
@@ -123,34 +125,55 @@ export default function CreateDealPage() {
       return;
     }
 
-    // Transform assets data to AssetReference format
-    const assetsReferences: AssetReference[] = data.assets.map(asset => ({
-      assetID: asset.assetID,
-      originalCost: asset.originalCost,
-      estimatedUsefulLife_months: asset.estimatedUsefulLife_months,
-    }));
+    try {
+      // Step 1: Upload the M&A Agreement to Walrus to get the blobId
+      toast.info('Uploading M&A Agreement to Walrus...');
+      const uploadResponse = await uploadFile({
+        file: uploadedFile,
+        dealId: 'temp-deal-id', // Placeholder, as deal is not created yet
+        periodId: 'agreement',
+        dataType: 'legal',
+      });
 
-    console.log('Creating deal with data:', data);
-    console.log('MA Agreement file:', uploadedFile);
-    console.log('Assets metadata:', { assets: assetsReferences });
+      if (!uploadResponse.blobId) {
+        throw new Error('Failed to get blobId from Walrus upload.');
+      }
+      toast.success('M&A Agreement uploaded successfully.');
 
-    // Create the deal on-chain
-    await createDeal({
-      name: data.dealName,
-      sellerAddress: data.acquireeAddress,
-      auditorAddress: data.auditorAddress,
-      onSuccess: (txDigest) => {
-        console.log('Deal created with transaction:', txDigest);
-        console.log('MA Agreement file to upload:', uploadedFile);
-        console.log('Assets to process:', assetsReferences);
-        // TODO: After deal is created, upload the M&A Agreement to Walrus
-        // TODO: Process assets data and store in smart contract
-        router.push('/deals');
-      },
-      onError: (error) => {
-        console.error('Failed to create deal:', error);
-      },
-    });
+      // Step 2: Prepare all data for the backend
+      const dealDataForBackend = {
+        name: data.dealName,
+        buyerName: data.buyerName,
+        sellerName: data.sellerName,
+        sellerAddress: data.acquireeAddress,
+        auditorAddress: data.auditorAddress,
+        // --- Pass all the new fields ---
+        kpiTarget: data.kpiTargetAmount,
+        agreementBlobId: uploadResponse.blobId,
+        assets: data.assets.map(asset => ({
+          asset_id: asset.assetID,
+          original_cost: asset.originalCost,
+          estimated_useful_life_months: asset.estimatedUsefulLife_months,
+        })),
+      };
+
+      // Step 3: Call the createDeal hook with the complete data
+      await createDeal({
+        dealData: dealDataForBackend,
+        onSuccess: (txDigest) => {
+          toast.success(`Deal "${data.dealName}" created successfully!`, {
+            description: `Transaction: ${txDigest.slice(0, 10)}...`,
+          });
+          router.push('/deals');
+        },
+        onError: (error) => {
+          toast.error('Failed to create deal', { description: error.message });
+        },
+      });
+    } catch (uploadError) {
+      console.error('Failed during upload or deal creation process:', uploadError);
+      toast.error('An error occurred', { description: uploadError instanceof Error ? uploadError.message : 'Please try again.' });
+    }
   };
 
   return (
@@ -549,11 +572,11 @@ export default function CreateDealPage() {
                   >
                     Cancel
                   </Button>
-                  <Button type="submit" disabled={isCreating || !uploadedFile}>
-                    {isCreating ? (
+                  <Button type="submit" disabled={isCreating || isUploading || !uploadedFile}>
+                    {isCreating || isUploading ? (
                       <>
                         <Loader2 className="mr-2 h-4 w-4 animate-spin" />
-                        Creating Deal...
+                        {isUploading ? 'Uploading File...' : 'Creating Deal...'}
                       </>
                     ) : (
                       'Create Deal'

@@ -26,6 +26,21 @@ module contracts::earnout {
 
     // --- Structs ---
 
+    /// Represents a single fixed asset related to the deal
+    public struct Asset has store, copy, drop {
+        asset_id: String,
+        original_cost: u64,
+        estimated_useful_life_months: u64,
+    }
+
+    /// Reference to a blob stored on Walrus decentralized storage
+    public struct WalrusBlobRef has store, copy, drop {
+        blob_id: String,
+        data_type: String,
+        uploaded_at: u64,
+        uploader: address,
+    }
+
     public struct Deal has key, store {
         id: UID,
         name: String,
@@ -33,9 +48,17 @@ module contracts::earnout {
         seller: address,
         auditor: address,
         periods: vector<Period>,
+        assets: vector<Asset>,
         parameters_locked: bool,
         whitelist_id: ID,
         whitelist_cap: WhitelistCap,
+
+        // New fields for M&A Agreement and Financial Summary
+        agreement_blob: WalrusBlobRef,
+        kpi_target: u64,
+        cumulative_revenue: u64,
+        cumulative_expenses: u64,
+        cumulative_net_profit: u64,
     }
 
     /// Formula for calculating earn-out for a period
@@ -52,14 +75,6 @@ module contracts::earnout {
         is_settled: bool,
         settled_amount: u64,
     }
-
-    public struct WalrusBlobRef has store, copy, drop {
-        blob_id: String,
-        data_type: String,
-        uploaded_at: u64,
-        uploader: address,
-    }
-
     // KPI Calculation Result (from Nautilus TEE)
     public struct KPIResult has store, copy, drop {
         period_id: String,
@@ -136,9 +151,35 @@ module contracts::earnout {
         name: String,
         seller: address,
         auditor: address,
+        // --- New parameters for added features ---
+        kpi_target: u64,
+        agreement_blob_id: String,
+        asset_ids: vector<String>,
+        asset_costs: vector<u64>,
+        asset_lives: vector<u64>,
+        clock: &Clock,
         ctx: &mut TxContext
     ) {
         let buyer = tx_context::sender(ctx);
+        let now = clock::timestamp_ms(clock);
+
+        // --- Asset Management ---
+        // Assert that all asset vectors have the same length
+        let asset_len = vector::length(&asset_ids);
+        assert!(vector::length(&asset_costs) == asset_len, EMismatchLength);
+        assert!(vector::length(&asset_lives) == asset_len, EMismatchLength);
+
+        // Create Asset objects from input vectors
+        let mut assets = vector::empty<Asset>();
+        let mut i = 0;
+        while (i < asset_len) {
+            vector::push_back(&mut assets, Asset {
+                asset_id: *vector::borrow(&asset_ids, i),
+                original_cost: *vector::borrow(&asset_costs, i),
+                estimated_useful_life_months: *vector::borrow(&asset_lives, i),
+            });
+            i = i + 1;
+        };
 
         // 1. Create Whitelist
         let (wl_cap,mut wl) = whitelist::create_whitelist(ctx);
@@ -160,9 +201,21 @@ module contracts::earnout {
             seller,
             auditor,
             periods: vector::empty(),
+            assets, // Store the created assets
             parameters_locked: false,
             whitelist_id: wl_id,
             whitelist_cap: wl_cap,
+            // --- Initialize new fields ---
+            agreement_blob: WalrusBlobRef {
+                blob_id: agreement_blob_id,
+                data_type: b"m&a_agreement".to_string(),
+                uploaded_at: now,
+                uploader: buyer,
+            },
+            kpi_target,
+            cumulative_revenue: 0,
+            cumulative_expenses: 0,
+            cumulative_net_profit: 0,
         };
         
         event::emit(DealCreated { 
@@ -272,7 +325,8 @@ module contracts::earnout {
         transfer::share_object(audit_record);
     }
 
-    public fun add_walrus_blob(
+    /// Internal helper function to add a single blob reference and create its audit record.
+    fun add_walrus_blob_internal(
         deal: &mut Deal,
         period_index: u64,
         blob_id: String,
@@ -315,6 +369,57 @@ module contracts::earnout {
             timestamp,
             ctx
         );
+    }
+
+    /// Entry function to add a single Walrus blob reference to a period.
+    /// This creates a DataAuditRecord for the blob.
+    public entry fun add_walrus_blob(
+        deal: &mut Deal,
+        period_index: u64,
+        blob_id: String,
+        data_type: String,
+        clock: &Clock,
+        ctx: &mut TxContext
+    ) {
+        add_walrus_blob_internal(
+            deal,
+            period_index,
+            blob_id,
+            data_type,
+            clock,
+            ctx
+        );
+    }
+
+    /// Entry function to add multiple Walrus blob references to a period in a single transaction.
+    /// This is more gas-efficient than calling `add_walrus_blob` multiple times.
+    public entry fun add_walrus_blobs_batch(
+        deal: &mut Deal,
+        period_index: u64,
+        blob_ids: vector<String>,
+        data_types: vector<String>,
+        clock: &Clock,
+        ctx: &mut TxContext
+    ) {
+        // Ensure the input vectors have the same length
+        let len = vector::length(&blob_ids);
+        assert!(vector::length(&data_types) == len, EMismatchLength);
+
+        let mut i = 0;
+        while (i < len) {
+            let blob_id = *vector::borrow(&blob_ids, i);
+            let data_type = *vector::borrow(&data_types, i);
+
+            add_walrus_blob_internal(
+                deal,
+                period_index,
+                blob_id,
+                data_type,
+                clock,
+                ctx
+            );
+            i = i + 1;
+        };
     }
 
     /// Auditor audits a data record with signature verification
